@@ -41,13 +41,6 @@ function KanisyncUi:main_menu(plugin)
                 end)
             end,
         })
-        table.insert(menu, {
-            text = _("View library"),
-            keep_menu_open = false,
-            callback = function()
-                self:library(plugin)
-            end,
-        })
     end
 
     table.insert(menu, {
@@ -55,7 +48,7 @@ function KanisyncUi:main_menu(plugin)
         keep_menu_open = true,
         callback = function()
             UIManager:show(InfoMessage:new({
-                text = "Kanisync: Sync your reading progress with AniList",
+                text = "Kanisync\n\nSync your reading progress with AniList\n\nVersion: v" .. plugin.version,
             }))
         end,
     })
