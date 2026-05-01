@@ -1,0 +1,1 @@
+ALWAYS look at KOReader's source code at `./koreader` before answering
