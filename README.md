@@ -1,5 +1,8 @@
 <a id="readme-top"></a>
 
+> [!WARNING]
+> This plugin is a WIP and is currently in a highly unstable state. Use at your own risk. I will not assume no liability for any damage or data loss caused by the use of this plugin.
+
 [![Contributors][contributors-shield]][contributors-url]
 [![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
