@@ -7,7 +7,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
-[![Unlicense License][license-shield]][license-url]
+[![GPL-3.0 License][license-shield]][license-url]
 
 
 
@@ -62,17 +62,6 @@ To get a local copy up and running follow these simple example steps.
 ## Usage
 
 TBD
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- ROADMAP -->
-## Roadmap
-
-- 
-
-See the [open issues](https://github.com/Saterz/kanisync.koplugin/issues) for a full list of proposed features (and known issues).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
