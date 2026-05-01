@@ -27,4 +27,4 @@ jobs:
         with:
           files: "*.zip"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.MY_RELEASE_TOKEN }}
