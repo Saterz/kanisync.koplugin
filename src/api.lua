@@ -127,7 +127,7 @@ end
 ---@param image_url string
 ---@return string|nil image_data
 ---@return string|nil error
-function KanisyncApi:downloadCover(image_url)
+function KanisyncApi.downloadCover(image_url)
   local chunks = {}
   local success, res, code = pcall(https.request, {
     url = image_url,

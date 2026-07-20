@@ -18,13 +18,12 @@ KanisyncUI.__index = KanisyncUI
 
 function KanisyncUI:new()
     local obj = setmetatable({}, self)
-    obj:init()
+    -- obj.init()
     return obj
 end
 
-function KanisyncUI:init()
-    -- Doesn't do anything yet
-end
+-- function KanisyncUI.init()
+-- end
 
 ---@param plugin Kanisync
 function KanisyncUI:main_menu(plugin)
@@ -51,14 +50,14 @@ function KanisyncUI:main_menu(plugin)
         text = _("About"),
         keep_menu_open = true,
         callback = function()
-            self:about(plugin)
+            self.about(plugin)
         end,
     })
 
     return menu
 end
 
-function KanisyncUI:about(plugin)
+function KanisyncUI.about(plugin)
     UIManager:show(InfoMessage:new({
         text = "Kanisync\n\nSync your reading progress with AniList\n\nVersion: v" .. plugin.version,
     }))
@@ -93,7 +92,7 @@ end
 ---@param search_query string
 ---@param search_callback fun(search_query: string)
 ---@param no_results? boolean
-function KanisyncUI:searchDialog(search_query, search_callback, no_results)
+function KanisyncUI.searchDialog(search_query, search_callback, no_results)
     local dialog
     dialog = InputDialog:new {
         title = _("Search AniList"),
@@ -132,7 +131,7 @@ end
 ---@param media table
 ---@param select_callback fun(media: table)
 ---@param cover_loader fun(url: string): string|nil
-function KanisyncUI:previewMedia(media, select_callback, cover_loader)
+function KanisyncUI.previewMedia(media, select_callback, cover_loader)
     local title = getMediaTitle(media)
     local details = {}
     if type(media.format) == "string" then table.insert(details, media.format) end
@@ -190,7 +189,7 @@ end
 ---@param cover_loader fun(url: string): string|nil
 function KanisyncUI:mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader)
     if #media_list == 0 then
-        self:searchDialog(search_query, search_callback, true)
+        self.searchDialog(search_query, search_callback, true)
         return
     end
 
@@ -205,7 +204,7 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
                 text = _("Adjust search..."),
                 callback = function()
                     UIManager:nextTick(function()
-                        self:searchDialog(search_query, search_callback)
+                        self.searchDialog(search_query, search_callback)
                     end)
                 end,
             },
@@ -249,7 +248,7 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
                 state = cover_widget,
                 callback = function()
                     UIManager:nextTick(function()
-                        self:previewMedia(media, select_callback, cover_loader)
+                        self.previewMedia(media, select_callback, cover_loader)
                     end)
                 end,
             })
@@ -277,7 +276,7 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
 end
 
 ---@param error_message string
-function KanisyncUI:errorMessage(error_message, dialog)
+function KanisyncUI.errorMessage(error_message, dialog)
     if dialog ~= nil then
         UIManager:close(dialog)
     end

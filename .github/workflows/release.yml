@@ -1,4 +1,4 @@
-name: Create Plugin Release
+name: Release Plugin
 
 on:
   push:
@@ -6,19 +6,42 @@ on:
       - "v*"
 
 jobs:
-  build:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Luacheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lua-check
+
+      - name: Check codebase
+        run: bash scripts/check.sh
+
+  release:
+    needs: check
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Create Plugin Zip
-        run: ./scripts/package.sh
+      - name: Create plugin ZIP
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: bash scripts/package.sh "${RELEASE_TAG#v}"
 
-      - name: Release
-        uses: softprops/action-gh-release@v2
+      - name: Publish release
+        uses: softprops/action-gh-release@v3
         with:
           files: "*.zip"
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-beta') }}
