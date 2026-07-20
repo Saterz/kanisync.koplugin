@@ -1,2 +1,0 @@
-- ALWAYS look at KOReader's source code at `./koreader` before answering
-- The `anilist_token` the user has to provide in `config.lua` is highly confidential. It should NEVER in any circumstances be outputed in KOReader's logs
