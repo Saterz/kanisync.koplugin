@@ -243,9 +243,9 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
                 end
             end
 
+            local metadata_text = table.concat(metadata, " • ")
             table.insert(items, {
-                text = getMediaTitle(media),
-                mandatory = table.concat(metadata, " • "),
+                text = getMediaTitle(media) .. (metadata_text ~= "" and " — " .. metadata_text or ""),
                 state = cover_widget,
                 callback = function()
                     UIManager:nextTick(function()
