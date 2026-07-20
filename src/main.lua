@@ -42,7 +42,7 @@ function Kanisync:init()
     end
 
     self.kanisync_ui = KanisyncUI:new()
-    self.api = KanisyncApi:new(self.token)
+    self.api = KanisyncApi.new(self.token)
 end
 
 function Kanisync:addToMainMenu(menu_items)
@@ -89,14 +89,14 @@ function Kanisync:searchBookOnAniList(search_query)
         or book_details.title
 
     if not search_query or search_query:match("^%s*$") then
-        self.kanisync_ui:errorMessage(_("No title was found in the book metadata."))
+        self.kanisync_ui.errorMessage(_("No title was found in the book metadata."))
         return
     end
 
     local media_list, error = self.api:searchMedia(search_query)
 
     if not media_list then
-        self.kanisync_ui:errorMessage(error or _("An error occurred while fetching the media list."))
+        self.kanisync_ui.errorMessage(error or _("An error occurred while fetching the media list."))
         return
     end
 

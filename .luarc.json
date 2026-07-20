@@ -19,7 +19,8 @@
       "koreader/.git",
       "koreader/build",
       "koreader/cache",
-      "koreader/thirdparty"
+      "koreader/thirdparty",
+      "plugins/kanisync.koplugin"
     ],
     "checkThirdParty": false
   },
