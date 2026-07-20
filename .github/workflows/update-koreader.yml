@@ -1,0 +1,30 @@
+name: Update KOReader submodule
+
+on:
+  schedule:
+    - cron: "0 6 */2 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Update KOReader
+        run: git submodule update --init --remote koreader
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: automation/update-koreader
+          commit-message: "chore: update KOReader submodule"
+          title: "chore: update KOReader submodule"
+          body: "Updates the KOReader submodule to the latest commit on its tracked branch."
+          delete-branch: true
