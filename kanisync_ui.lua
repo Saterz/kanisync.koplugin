@@ -21,7 +21,6 @@ function KanisyncUi:library(plugin)
     -- to-do
 end
 
-
 function KanisyncUi:main_menu(plugin)
     local is_token_provided = plugin:hasToken()
 
