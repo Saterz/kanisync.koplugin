@@ -3,7 +3,7 @@ name: Create Plugin Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   build:
@@ -16,11 +16,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Create Plugin Zip
-        run: |
-          REPO_NAME=$(basename ${{ github.repository }})
-          mkdir -p "dist/$REPO_NAME.koreader"
-          rsync -av --exclude='.git*' --exclude='.github' --exclude='dist' --exclude='koreader' --exclude='.luarc.json' --exclude='GEMINI.md' ./ "dist/$REPO_NAME.koreader/"
-          cd dist && zip -r "../$REPO_NAME.zip" "$REPO_NAME.koreader"
+        run: ./scripts/package.sh
 
       - name: Release
         uses: softprops/action-gh-release@v2
