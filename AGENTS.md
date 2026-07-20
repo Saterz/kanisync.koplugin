@@ -1,3 +1,4 @@
-- ALWAYS look at KOReader's source code at `./koreader` before answering
+- Read the relevant parts of KOReader's source code in the `./koreader` folder before answering when using its functions
+- NEVER update the development copy at `./koreader/plugins/kanisync.koplugin` if present; `scripts/dev.sh` copies `./src` there when the developer runs it
 - The `anilist_token` the user has to provide in `config.lua` is highly confidential. It should NEVER in any circumstances be outputted in KOReader's logs
 - NEVER use `_` as a throwaway loop variable or local name when gettext is imported as `_`; use a descriptive name so `_()` cannot be shadowed
