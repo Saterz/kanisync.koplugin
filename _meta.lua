@@ -1,7 +1,7 @@
 local _ = require("gettext")
 return {
     name = "kanisync",
-    fullname = _("Kanisync"),
+    fullname = "Kanisync",
     description = _([[Sync your reading progress with AniList]]),
-    version = "0.0.1"
+    version = "1.0.0-beta1"
 }
