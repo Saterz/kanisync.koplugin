@@ -1,4 +1,9 @@
 {
+    "[lua]": {
+    "editor.defaultFormatter": "sumneko.lua",
+    "editor.formatOnSave": true
+  },
+  "Lua.runtime.version": "LuaJIT",
   "cSpell.words": [
     "anilist",
     "Kanisync",
