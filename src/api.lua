@@ -3,6 +3,7 @@ local ltn12 = require("ltn12")
 local JSON = require("rapidjson")
 
 ---@class KanisyncApi
+---@field token string User provided AniList token
 local KanisyncApi = {}
 KanisyncApi.__index = KanisyncApi
 
@@ -81,25 +82,25 @@ function KanisyncApi:searchMedia(search_query)
   query ($search: String!) {
   Page(page: 1, perPage: 15) {
     media(search: $search, type: MANGA, sort: SEARCH_MATCH) {
-      id
-      title {
-        userPreferred
-        romaji
-        english
-        native
-      }
-      format
-      chapters
-      volumes
-      startDate {
-        year
-      }
-      coverImage {
-        medium
+        id
+        title {
+          userPreferred
+          romaji
+          english
+          native
+        }
+        format
+        chapters
+        volumes
+        startDate {
+          year
+        }
+        coverImage {
+          medium
+        }
       }
     }
   }
-}
 ]]
 
   local variables = {
