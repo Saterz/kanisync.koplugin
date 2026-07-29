@@ -29,11 +29,9 @@ end
 function KanisyncUI:main_menu(plugin)
     local is_token_provided = plugin:hasToken()
 
-    local no_token_menu = { text = "Token not found", enabled = false }
-
     local menu = {}
     if not is_token_provided then
-        table.insert(menu, no_token_menu)
+        table.insert(menu, { text = "Token not found", enabled = false })
     else
         table.insert(menu, {
             text = _("Link book to AniList"),
