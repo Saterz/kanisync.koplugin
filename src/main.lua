@@ -15,7 +15,6 @@ local KanisyncUI = require("ui")
 local KanisyncApi = require("api")
 local KanisyncConfig = require("config")
 
-local CLIENT_ID = "40345"
 local SETTINGS_FILE = DataStorage:getSettingsDir() .. "/kanisync_settings.lua"
 
 ---@class Kanisync
@@ -23,7 +22,6 @@ local SETTINGS_FILE = DataStorage:getSettingsDir() .. "/kanisync_settings.lua"
 local Kanisync = WidgetContainer:extend {
     name = "kanisync",
     is_doc_only = true,
-    client_id = CLIENT_ID
 }
 
 -- function Kanisync:onDispatcherRegisterActions()
