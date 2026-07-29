@@ -42,7 +42,7 @@ function Kanisync:init()
     end
 
     self.kanisync_ui = KanisyncUI:new()
-    self.api = KanisyncApi.new(self.token)
+    self.api = KanisyncApi:new(self.token)
 end
 
 function Kanisync:addToMainMenu(menu_items)
