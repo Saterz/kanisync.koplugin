@@ -1,7 +1,4 @@
-<a id="readme-top"></a>
-
-> [!WARNING]
-> This plugin is a WIP and is currently in a highly unstable state. Use at your own risk. I will assume no liability for any damage or data loss caused by the use of this plugin.
+# Kanisync
 
 [![Contributors][contributors-shield]][contributors-url]
 [![Forks][forks-shield]][forks-url]
@@ -9,43 +6,22 @@
 [![Issues][issues-shield]][issues-url]
 [![GPL-3.0 License][license-shield]][license-url]
 
+A KOReader plugin to sync your reading progress with [AniList](https://anilist.co)
 
+[Report Bug](https://github.com/Saterz/kanisync.koplugin/issues/new?labels=bug&template=bug-report---.md) &middot; [Request Feature](https://github.com/Saterz/kanisync.koplugin/issues/new?labels=enhancement&template=feature-request---.md)
 
-<br />
-<div align="center">
-  <h3 align="center">Kanisync</h3>
-
-  <p align="center">
-    A KOReader plugin to sync your reading progress with <a href="https://anilist.co">AniList</a>
-    <br />
-    <br />
-    <a href="https://github.com/Saterz/kanisync.koplugin/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
-    &middot;
-    <a href="https://github.com/Saterz/kanisync.koplugin/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
-  </p>
-</div>
-
-
-
-<!-- ABOUT THE PROJECT -->
 ## About The Project
+
+> [!WARNING]
+> This plugin is a WIP and is currently in a highly unstable state. Use at your own risk. I will assume no liability for any damage or data loss caused by the use of this plugin.
+
+## Getting Started
 
 WIP
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- GETTING STARTED -->
-## Getting Started
-
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
-
 ### Prerequisites
 
-- An [AniList](https://anilist.co) account. You can signup at https://anilist.co/signup
-
+- An [AniList](https://anilist.co) account. You can signup at [https://anilist.co/signup](https://anilist.co/signup)
 
 ### Installation
 
@@ -54,20 +30,10 @@ To get a local copy up and running follow these simple example steps.
 3. Fill `anilist_token` with your access token
 4. Start using the plugin!
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- USAGE EXAMPLES -->
 ## Usage
 
 TBD
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- CONTRIBUTING -->
 ## Contributing
 
 If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
@@ -79,46 +45,24 @@ Don't forget to give the project a star! Thanks again!
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-### Top contributors:
+### Top contributors
 
-<a href="https://github.com/Saterz/kanisync.koplugin/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=Saterz/kanisync.koplugin" alt="contrib.rocks image" />
-</a>
+[![Contributors](https://contrib.rocks/image?repo=Saterz/kanisync.koplugin)][contributors-url]
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- LICENSE -->
 ## License
 
 Distributed under the GPL-3.0 License. See `LICENSE` for more information.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- CONTACT -->
 ## Contact
 
-Saterz - contact@saterz.dev
+Saterz - [contact@saterz.dev](mailto:contact@saterz.dev)
 
-Project Link: [https://github.com/Saterz/kanisync.koplugin](https://github.com/Saterz/kanisync.koplugin)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
 
 This plugin would have not been possible without these awesome projects:
 
-* [KOReader](https://koreader.rocks)
-* [AniList](https://anilist.co)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
+- [KOReader](https://koreader.rocks)
+- [AniList](https://anilist.co)
 
 [contributors-shield]: https://img.shields.io/github/contributors/Saterz/kanisync.koplugin.svg?style=for-the-badge
 [contributors-url]: https://github.com/Saterz/kanisync.koplugin/graphs/contributors
