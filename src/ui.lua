@@ -210,13 +210,6 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
 
         for media_index = 1, #media_list do
             local media = media_list[media_index]
-            local metadata = {}
-            if type(media.format) == "string" then table.insert(metadata, media.format) end
-            if type(media.startDate) == "table" and type(media.startDate.year) == "number" then
-                table.insert(metadata, tostring(media.startDate.year))
-            end
-            if type(media.volumes) == "number" then table.insert(metadata, T(_("%1 vol."), media.volumes)) end
-            if type(media.chapters) == "number" then table.insert(metadata, T(_("%1 ch."), media.chapters)) end
 
             local cover_widget
             local cover_url = type(media.coverImage) == "table"
@@ -240,9 +233,9 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
                 end
             end
 
-            local metadata_text = table.concat(metadata, " • ")
             table.insert(items, {
-                text = getMediaTitle(media) .. (metadata_text ~= "" and " — " .. metadata_text or ""),
+                text = getMediaTitle(media),
+                mandatory = media.mediaListEntry and _("In Library") or nil,
                 state = cover_widget,
                 callback = function()
                     UIManager:nextTick(function()

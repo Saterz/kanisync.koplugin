@@ -98,6 +98,30 @@ function KanisyncApi:searchMedia(search_query)
         coverImage {
           medium
         }
+        mediaListEntry {
+          id
+          mediaId
+          status
+          score
+          progress
+          progressVolumes
+          repeat
+          priority
+          private
+          notes
+          startedAt {
+            year
+            month
+            day
+          }
+          completedAt {
+            year
+            month
+            day
+          }
+          createdAt
+          updatedAt
+        }
       }
     }
   }

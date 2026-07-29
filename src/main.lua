@@ -17,6 +17,14 @@ local KanisyncConfig = require("config")
 
 local SETTINGS_FILE = DataStorage:getSettingsDir() .. "/kanisync_settings.lua"
 
+---@alias ReadingStatus string "Source: https://docs.anilist.co/reference/enum/medialiststatus#medialiststatus"
+---| "CURRENT" Currently watching/reading
+---| "PLANNING"	Planning to watch/read
+---| "COMPLETED" Finished watching/reading
+---| "DROPPED" Stopped watching/reading before completing
+---| "PAUSED" Paused watching/reading
+---| "REPEATING" Re-watching/reading
+
 ---@class Kanisync
 ---@field ui table KOReader UI instance injected by PluginLoader
 local Kanisync = WidgetContainer:extend {
@@ -73,12 +81,8 @@ function Kanisync:getCurrentBookDetails()
     }
 end
 
-function Kanisync:linkBookToAniList()
-    return self:searchBookOnAniList()
-end
-
 ---@param search_query? string
-function Kanisync:searchBookOnAniList(search_query)
+function Kanisync:linkBookToAniList(search_query)
     local book_details = self:getCurrentBookDetails()
 
     search_query = search_query
@@ -108,17 +112,23 @@ function Kanisync:searchBookOnAniList(search_query)
                 or titles.romaji
                 or titles.native
                 or tostring(media.id)
-            self.ui.doc_settings:saveSetting("kanisync_media", {
+            local user_list_entry = media.mediaListEntry or {}
+            self.ui.doc_settings:saveSetting("kanisync", {
                 id = media.id,
                 title = title,
+
+                ---@type ReadingStatus
+                status = user_list_entry.status or "CURRENT",
+
+                fetched_at = os.time()
             })
             self.ui.doc_settings:flush()
         end,
         function(refined_query)
-            self:searchBookOnAniList(refined_query)
+            self:linkBookToAniList(refined_query)
         end,
         function(cover_url)
-            return self.api:downloadCover(cover_url)
+            return self.api.downloadCover(cover_url)
         end
     )
 end
