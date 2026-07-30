@@ -131,8 +131,7 @@ function Kanisync:saveCurrentBookAniListData(media)
 
         user_metadata = {
             id = user_list_entry.id or nil,
-            ---@type ReadingStatus
-            status = user_list_entry.status or "CURRENT",
+            status = user_list_entry.status,
             score = user_list_entry.score or nil,
             progress = user_list_entry.progress,
             progress_volumes = user_list_entry.progressVolumes,
@@ -209,6 +208,18 @@ function Kanisync:linkBookToAniList(search_query)
         media_list,
         search_query,
         function(media)
+            --[[
+            We assume that if the media entry doesn't have a user status then the entry is not present in its library.
+            Updating its status will add it in its library.
+            ]]
+            if not media.mediaListEntry or not media.mediaListEntry.status then
+                local list_entry_id = media.mediaListEntry and media.mediaListEntry.id
+                local result, updateError = self.api:updateMediaListStatus(list_entry_id, media.id, "CURRENT")
+                if updateError or not result then
+                    return updateError or _("AniList returned an invalid response")
+                end
+                media.mediaListEntry = result
+            end
             self:saveCurrentBookAniListData(media)
         end,
         function(refined_query)

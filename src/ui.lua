@@ -360,9 +360,9 @@ function KanisyncUI.searchDialog(search_query, search_callback, no_results)
 end
 
 ---@param media table
----@param select_callback fun(media: table)
+---@param select_callback fun(media: table): string|nil
 ---@param cover_loader fun(url: string): string|nil
-function KanisyncUI.previewMedia(media, select_callback, cover_loader)
+function KanisyncUI:previewMedia(media, select_callback, cover_loader)
     local title = getMediaTitle(media)
     local details = {}
     if media.format then
@@ -382,7 +382,11 @@ function KanisyncUI.previewMedia(media, select_callback, cover_loader)
         text = title .. (#details > 0 and "\n" .. table.concat(details, " • ") or ""),
         ok_text = _("Link"),
         ok_callback = function()
-            select_callback(media)
+            local error = select_callback(media)
+            if error then
+                self.errorMessage(error)
+                return
+            end
             UIManager:show(InfoMessage:new {
                 text = T(_("Linked to %1."), title),
                 timeout = 3,
@@ -421,7 +425,7 @@ end
 
 ---@param media_list table
 ---@param search_query string
----@param select_callback fun(media: table)
+---@param select_callback fun(media: table): string|nil
 ---@param search_callback fun(search_query: string)
 ---@param cover_loader fun(url: string): string|nil
 function KanisyncUI:mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader)
@@ -478,7 +482,7 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
                 state = cover_widget,
                 callback = function()
                     UIManager:nextTick(function()
-                        self.previewMedia(media, select_callback, cover_loader)
+                        self:previewMedia(media, select_callback, cover_loader)
                     end)
                 end,
             })
