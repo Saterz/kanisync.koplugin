@@ -98,7 +98,7 @@ function KanisyncUI:manageEntry(anilist_data)
     local hasScore = user_metadata.score ~= nil
     return {
         {
-            text = _("Sync"),
+            text = _("Pull changes"),
             callback = function()
                 local id = anilist_data.id
                 local media, error = self.plugin.api:getMedia(id)
