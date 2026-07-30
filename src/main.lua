@@ -84,12 +84,14 @@ function Kanisync:init()
     self.score_formats = SCORE_FORMATS
     self.api = KanisyncApi:new(self.token)
 
-
-    local user, error = self.api:getUser()
-    if error then
-        logger.err("Kanisync | An error occurred while fetching user: ", error)
+    self.user = {}
+    if self.token then
+        local user, error = self.api:getUser()
+        if error then
+            logger.err("Kanisync | An error occurred while fetching user: ", error)
+        end
+        self.user = user
     end
-    self.user = user
 end
 
 function Kanisync:addToMainMenu(menu_items)
