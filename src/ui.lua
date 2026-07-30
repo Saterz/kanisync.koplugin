@@ -42,7 +42,7 @@ function KanisyncUI:main_menu(plugin, anilist_data, username)
         if anilist_data then
             table.insert(menu, {
                 text = _("Linked to ") .. anilist_data.title,
-                sub_item_table = self:manageEntry(plugin)
+                sub_item_table = self.manageEntry(plugin)
             })
         else
             table.insert(menu, {
@@ -68,7 +68,7 @@ function KanisyncUI:main_menu(plugin, anilist_data, username)
     return menu
 end
 
-function KanisyncUI:manageEntry(plugin)
+function KanisyncUI.manageEntry(plugin)
     return { {
         text = _("Change linked book"),
         keep_menu_open = false,
