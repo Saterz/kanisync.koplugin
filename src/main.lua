@@ -215,7 +215,7 @@ function Kanisync:linkBookToAniList(search_query)
             self:linkBookToAniList(refined_query)
         end,
         function(cover_url)
-            return self.api.downloadCover(cover_url)
+            return self.api.downloadImage(cover_url)
         end
     )
 end

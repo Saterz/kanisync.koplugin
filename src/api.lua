@@ -220,7 +220,7 @@ end
 ---@param image_url string
 ---@return string|nil image_data
 ---@return string|nil error
-function KanisyncApi.downloadCover(image_url)
+function KanisyncApi.downloadImage(image_url)
   local chunks = {}
   local success, res, code = pcall(https.request, {
     url = image_url,
@@ -228,7 +228,7 @@ function KanisyncApi.downloadCover(image_url)
   })
 
   if not success or not res or tonumber(code) ~= 200 then
-    return nil, "Unable to download cover"
+    return nil, "Unable to download image"
   end
 
   return table.concat(chunks)
