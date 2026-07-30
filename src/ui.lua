@@ -300,13 +300,8 @@ function KanisyncUI.about(plugin)
 end
 
 local function getMediaTitle(media)
-    local title = type(media.title) == "table" and media.title or {}
-    local candidates = { title.userPreferred, title.english, title.romaji, title.native }
-    for title_index = 1, 4 do
-        local value = candidates[title_index]
-        if type(value) == "string" then return value end
-    end
-    return T(_("AniList entry #%1"), tostring(media.id))
+    local title = media.title
+    return title.userPreferred or title.english or title.romaji or title.native
 end
 
 local function renderCover(image_data, max_width, max_height)
@@ -370,12 +365,18 @@ end
 function KanisyncUI.previewMedia(media, select_callback, cover_loader)
     local title = getMediaTitle(media)
     local details = {}
-    if type(media.format) == "string" then table.insert(details, media.format) end
-    if type(media.startDate) == "table" and type(media.startDate.year) == "number" then
+    if media.format then
+        table.insert(details, media.format)
+    end
+    if media.startDate and media.startDate.year then
         table.insert(details, tostring(media.startDate.year))
     end
-    if type(media.volumes) == "number" then table.insert(details, T(_("%1 volumes"), media.volumes)) end
-    if type(media.chapters) == "number" then table.insert(details, T(_("%1 chapters"), media.chapters)) end
+    if media.chapters then
+        table.insert(details, T(_("%1 chapters"), media.chapters))
+    end
+    if media.volumes then
+        table.insert(details, T(_("%1 volumes"), media.volumes))
+    end
 
     local confirm = ConfirmBox:new {
         text = title .. (#details > 0 and "\n" .. table.concat(details, " • ") or ""),
