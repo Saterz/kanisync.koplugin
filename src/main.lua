@@ -59,15 +59,20 @@ function Kanisync:init()
 end
 
 function Kanisync:addToMainMenu(menu_items)
+    local anilist_data = self:getCurrentBookAniListData()
     menu_items.kanisync = {
         text = _("Kanisync"),
         sorting_hint = "tools",
-        sub_item_table = self.kanisync_ui:main_menu(self, self.user.name)
+        sub_item_table = self.kanisync_ui:main_menu(self, anilist_data, self.user.name)
     }
 end
 
 function Kanisync:hasToken()
     return self.token ~= nil and self.token ~= ""
+end
+
+function Kanisync:getCurrentBookAniListData()
+    return self.ui.doc_settings:readSetting("kanisync")
 end
 
 function Kanisync:getCurrentBookDetails()
@@ -120,12 +125,21 @@ function Kanisync:linkBookToAniList(search_query)
                 or titles.native
                 or tostring(media.id)
             local user_list_entry = media.mediaListEntry or {}
+            self.ui.doc_settings:delSetting("kanisync")
+            self.ui.doc_settings:flush()
             self.ui.doc_settings:saveSetting("kanisync", {
                 id = media.id,
                 title = title,
 
-                ---@type ReadingStatus
-                status = user_list_entry.status or "CURRENT",
+                user_metadata = {
+                    id = user_list_entry.id or nil,
+                    ---@type ReadingStatus
+                    status = user_list_entry.status or "CURRENT",
+                    score = user_list_entry.score or nil,
+                    progress = user_list_entry.progress,
+                    progress_volumes = user_list_entry.progressVolumes,
+                    notes = user_list_entry.notes
+                },
 
                 fetched_at = os.time()
             })

@@ -1,12 +1,15 @@
 local https = require("ssl.https")
 local ltn12 = require("ltn12")
 local JSON = require("rapidjson")
+-- local logger = require("logger")
 
 ---@class KanisyncApi
 ---@field token string User provided AniList token
 local KanisyncApi = {}
 KanisyncApi.__index = KanisyncApi
 
+---@param value table
+---@return table|nil
 local function normalizeJsonNull(value)
   if value == JSON.null then
     return nil
@@ -32,8 +35,9 @@ end
 
 ---@param query string
 ---@param variables? table
----@return table|nil response
----@return string|nil error
+---@return table response
+---@return nil error
+---@overload fun(query: string, variables?: table): nil, string
 function KanisyncApi:request(query, variables)
   local url = "https://graphql.anilist.co"
 
@@ -70,18 +74,28 @@ function KanisyncApi:request(query, variables)
   local success, decoded = pcall(JSON.decode, response_string)
 
   if success and type(decoded) == "table" then
-    return normalizeJsonNull(decoded)
+    local result = normalizeJsonNull(decoded)
+    if not result then
+      return nil, "AniList didn't send a response"
+    end
+    if result.errors then
+      return nil, result.errors[1] and result.errors[1].message or "AniList request failed"
+    end
+    return result, nil
   else
     return nil, "Error decoding JSON. HTTP Code: " .. tostring(code)
   end
 end
 
 ---@param search_query string
+---@return table response
+---@return nil error
+---@overload fun(query: string, variables?: table): nil, string
 function KanisyncApi:searchMedia(search_query)
   local query = [[
   query ($search: String!) {
-  Page(page: 1, perPage: 15) {
-    media(search: $search, type: MANGA, sort: SEARCH_MATCH) {
+    Page(page: 1, perPage: 15) {
+      media(search: $search, type: MANGA, sort: SEARCH_MATCH) {
         id
         title {
           userPreferred
@@ -136,17 +150,11 @@ function KanisyncApi:searchMedia(search_query)
   if error then
     return nil, error
   end
-  if not result then
-    return nil, "AniList returned an empty response"
-  end
-  if result.errors then
-    return nil, result.errors[1] and result.errors[1].message or "AniList request failed"
-  end
   if not result.data or not result.data.Page then
     return nil, "AniList returned an invalid response"
   end
 
-  return result.data.Page.media or {}
+  return result.data.Page.media
 end
 
 ---@param image_url string
@@ -164,6 +172,30 @@ function KanisyncApi.downloadCover(image_url)
   end
 
   return table.concat(chunks)
+end
+
+---@return table response
+---@return nil error
+---@overload fun(query: string, variables?: table): nil, string
+function KanisyncApi:getUser()
+  local query = [[
+  query {
+    Viewer {
+      id
+      name
+    }
+  }
+  ]]
+
+  local result, error = self:request(query)
+  if error then
+    return nil, error
+  end
+  if not result.data or not result.data.Viewer then
+    return nil, "AniList returned an invalid response"
+  end
+
+  return result.data.Viewer
 end
 
 return KanisyncApi

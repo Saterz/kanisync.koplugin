@@ -26,7 +26,9 @@ end
 -- end
 
 ---@param plugin Kanisync
-function KanisyncUI:main_menu(plugin, username)
+---@param anilist_data table
+---@param username string
+function KanisyncUI:main_menu(plugin, anilist_data, username)
     local is_token_provided = plugin:hasToken()
 
     local menu = {}
@@ -34,18 +36,25 @@ function KanisyncUI:main_menu(plugin, username)
         table.insert(menu, { text = "Token not found", enabled = false })
     else
         table.insert(menu, {
-            text = _("Welcome ") .. username,
+            text = _("Connected as ") .. username,
             enabled = false,
         })
-        table.insert(menu, {
-            text = _("Link book to AniList"),
-            keep_menu_open = false,
-            callback = function()
-                NetworkMgr:runWhenOnline(function()
-                    plugin:linkBookToAniList()
-                end)
-            end,
-        })
+        if anilist_data then
+            table.insert(menu, {
+                text = _("Linked to ") .. anilist_data.title,
+                sub_item_table = self:manageEntry(plugin)
+            })
+        else
+            table.insert(menu, {
+                text = _("Link book to AniList"),
+                keep_menu_open = false,
+                callback = function()
+                    NetworkMgr:runWhenOnline(function()
+                        plugin:linkBookToAniList()
+                    end)
+                end,
+            })
+        end
     end
 
     table.insert(menu, {
@@ -57,6 +66,18 @@ function KanisyncUI:main_menu(plugin, username)
     })
 
     return menu
+end
+
+function KanisyncUI:manageEntry(plugin)
+    return { {
+        text = _("Change linked book"),
+        keep_menu_open = false,
+        callback = function()
+            NetworkMgr:runWhenOnline(function()
+                plugin:linkBookToAniList()
+            end)
+        end,
+    } }
 end
 
 function KanisyncUI.about(plugin)
