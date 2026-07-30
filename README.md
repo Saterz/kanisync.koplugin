@@ -25,6 +25,21 @@ WIP
 
 ### Installation
 
+#### Recommended: ZenPM
+
+ZenPM is a package manager for KOReader plugins. It is the recommended way to install Kanisync because adding the custom repository ensures you receive new versions as soon as they are released.
+
+1. Install [ZenPM](https://github.com/xZenLabs/zen-pm) if you have not already.
+2. Open ZenPM's **Sources** screen and add `https://zenpm-repo.saterz.dev`.
+3. Refresh the sources, then find and install **Kanisync**.
+
+#### Other options
+
+- Install Kanisync from a third-party KOReader plugin app store.
+- Download the latest release from the [GitHub Releases page](https://github.com/Saterz/kanisync.koplugin/releases) and install it manually.
+
+### Configuration
+
 1. Get your access token from [this link](https://anilist.co/api/v2/oauth/authorize?client_id=40345&response_type=token)
 2. Rename `config.sample.lua` to `config.lua`
 3. Fill `anilist_token` with your access token
