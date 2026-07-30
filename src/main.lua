@@ -13,7 +13,6 @@ local _ = require("gettext")
 
 local KanisyncUI = require("ui")
 local KanisyncApi = require("api")
-local KanisyncConfig = require("config")
 
 local SETTINGS_FILE = DataStorage:getSettingsDir() .. "/kanisync_settings.lua"
 
@@ -41,6 +40,7 @@ function Kanisync:init()
     self.ui.menu:registerToMainMenu(self)
     self.settings = LuaSettings:open(SETTINGS_FILE)
 
+    local _, KanisyncConfig = pcall(require, "config")
     if KanisyncConfig and KanisyncConfig.anilist_token ~= "" then
         self.token = KanisyncConfig.anilist_token
     else
