@@ -39,7 +39,7 @@ ZenPM is a package manager for KOReader plugins. It is the recommended way to in
 ### Configuration
 
 1. Get your access token from [this link](https://anilist.co/api/v2/oauth/authorize?client_id=40345&response_type=token)
-2. Rename `config.sample.lua` to `config.lua`
+2. Rename `kani_config.sample.lua` to `kani_config.lua`
 3. Fill `anilist_token` with your access token
 4. Start using the plugin!
 

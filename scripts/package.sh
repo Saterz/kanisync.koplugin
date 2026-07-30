@@ -11,7 +11,7 @@ fi
 
 mkdir -p "dist/$PLUGIN_NAME"
 rsync -av \
-    --exclude="config.lua" \
+    --exclude="kani_config.lua" \
     --include="*/" \
     --include="*.lua" \
     --exclude="*" \

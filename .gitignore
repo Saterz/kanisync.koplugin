@@ -40,5 +40,5 @@ luac.out
 *.hex
 
 # Kanisync specific
-config.lua
+kani_config.lua
 dist
