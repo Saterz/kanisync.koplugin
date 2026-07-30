@@ -16,6 +16,39 @@ local KanisyncApi = require("api")
 
 local SETTINGS_FILE = DataStorage:getSettingsDir() .. "/kanisync_settings.lua"
 
+local SCORE_FORMATS = {
+    POINT_100 = {
+        minimum = 0,
+        maximum = 100,
+        step = 1,
+        label = "100-point",
+    },
+    POINT_10_DECIMAL = {
+        minimum = 0,
+        maximum = 10,
+        step = 0.1,
+        label = "10-point decimal",
+    },
+    POINT_10 = {
+        minimum = 0,
+        maximum = 10,
+        step = 1,
+        label = "10-point",
+    },
+    POINT_5 = {
+        minimum = 0,
+        maximum = 5,
+        step = 1,
+        label = "5-star",
+    },
+    POINT_3 = {
+        minimum = 0,
+        maximum = 3,
+        step = 1,
+        label = "3-point smiley",
+    },
+}
+
 ---@alias ReadingStatus string "Source: https://docs.anilist.co/reference/enum/medialiststatus#medialiststatus"
 ---| "CURRENT" Currently watching/reading
 ---| "PLANNING"	Planning to watch/read
@@ -47,23 +80,25 @@ function Kanisync:init()
         logger.warn("Kanisync | No token found in config.lua")
     end
 
-    self.kanisync_ui = KanisyncUI:new()
+    self.kanisync_ui = KanisyncUI:new(self)
+    self.score_formats = SCORE_FORMATS
     self.api = KanisyncApi:new(self.token)
 
 
     local user, error = self.api:getUser()
     if error then
-        logger.err("Kanisync | An error occurred when fetching current user: ", error)
+        logger.err("Kanisync | An error occurred while fetching user: ", error)
     end
     self.user = user
 end
 
 function Kanisync:addToMainMenu(menu_items)
-    local anilist_data = self:getCurrentBookAniListData()
     menu_items.kanisync = {
         text = _("Kanisync"),
         sorting_hint = "tools",
-        sub_item_table = self.kanisync_ui:main_menu(self, anilist_data, self.user.name)
+        sub_item_table_func = function()
+            return self.kanisync_ui:main_menu(self:getCurrentBookAniListData(), self.user.name)
+        end
     }
 end
 
@@ -73,6 +108,57 @@ end
 
 function Kanisync:getCurrentBookAniListData()
     return self.ui.doc_settings:readSetting("kanisync")
+end
+
+function Kanisync:saveCurrentBookAniListData(media)
+    local titles = media.title or {}
+    local title = titles.userPreferred
+        or titles.english
+        or titles.romaji
+        or titles.native
+    local user_list_entry = media.mediaListEntry or {}
+    self.ui.doc_settings:delSetting("kanisync")
+    self.ui.doc_settings:flush()
+    self.ui.doc_settings:saveSetting("kanisync", {
+        id = media.id,
+        title = title,
+
+        user_metadata = {
+            id = user_list_entry.id or nil,
+            ---@type ReadingStatus
+            status = user_list_entry.status or "CURRENT",
+            score = user_list_entry.score or nil,
+            progress = user_list_entry.progress,
+            progress_volumes = user_list_entry.progressVolumes,
+            notes = user_list_entry.notes
+        },
+
+        fetched_at = os.time()
+    })
+    self.ui.doc_settings:flush()
+end
+
+---@param key string
+---@param value any
+---@return nil
+function Kanisync:updateCurrentBookAniListData(key, value)
+    local anilist_data = self.ui.doc_settings:readSetting("kanisync")
+    anilist_data[key] = value
+
+    self.ui.doc_settings:saveSetting("kanisync", anilist_data)
+    self.ui.doc_settings:flush()
+end
+
+---Updates the user metadata of the current book.
+---@param key string
+---@param value any
+---@return nil
+function Kanisync:updateCurrentBookUserMetadata(key, value)
+    local anilist_data = self.ui.doc_settings:readSetting("kanisync")
+    anilist_data.user_metadata[key] = value
+
+    self.ui.doc_settings:saveSetting("kanisync", anilist_data)
+    self.ui.doc_settings:flush()
 end
 
 function Kanisync:getCurrentBookDetails()
@@ -118,32 +204,7 @@ function Kanisync:linkBookToAniList(search_query)
         media_list,
         search_query,
         function(media)
-            local titles = media.title or {}
-            local title = titles.userPreferred
-                or titles.english
-                or titles.romaji
-                or titles.native
-                or tostring(media.id)
-            local user_list_entry = media.mediaListEntry or {}
-            self.ui.doc_settings:delSetting("kanisync")
-            self.ui.doc_settings:flush()
-            self.ui.doc_settings:saveSetting("kanisync", {
-                id = media.id,
-                title = title,
-
-                user_metadata = {
-                    id = user_list_entry.id or nil,
-                    ---@type ReadingStatus
-                    status = user_list_entry.status or "CURRENT",
-                    score = user_list_entry.score or nil,
-                    progress = user_list_entry.progress,
-                    progress_volumes = user_list_entry.progressVolumes,
-                    notes = user_list_entry.notes
-                },
-
-                fetched_at = os.time()
-            })
-            self.ui.doc_settings:flush()
+            self:saveCurrentBookAniListData(media)
         end,
         function(refined_query)
             self:linkBookToAniList(refined_query)
@@ -152,6 +213,11 @@ function Kanisync:linkBookToAniList(search_query)
             return self.api.downloadCover(cover_url)
         end
     )
+end
+
+function Kanisync:unlinkBook()
+    self.ui.doc_settings:delSetting("kanisync")
+    self.ui.doc_settings:flush()
 end
 
 return Kanisync

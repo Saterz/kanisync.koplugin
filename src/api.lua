@@ -87,6 +87,68 @@ function KanisyncApi:request(query, variables)
   end
 end
 
+function KanisyncApi:getMedia(media_id)
+  local query = [[
+  query ($id: Int!) {
+    Media(id: $id, type: MANGA) {
+      id
+      title {
+        userPreferred
+        romaji
+        english
+        native
+      }
+      format
+      chapters
+      volumes
+      startDate {
+        year
+      }
+      coverImage {
+        medium
+      }
+      mediaListEntry {
+        id
+        mediaId
+        status
+        score
+        progress
+        progressVolumes
+        repeat
+        notes
+        startedAt {
+          year
+          month
+          day
+        }
+        completedAt {
+          year
+          month
+          day
+        }
+        createdAt
+        updatedAt
+      }
+    }
+  }
+  ]]
+
+  local variables = {
+    id = media_id
+  }
+
+  local result, error = self:request(query, variables)
+
+  if error then
+    return nil, error
+  end
+  if not result.data or not result.data.Media then
+    return nil, "AniList returned an invalid response"
+  end
+
+  return result.data.Media
+end
+
 ---@param search_query string
 ---@return table response
 ---@return nil error
@@ -120,8 +182,6 @@ function KanisyncApi:searchMedia(search_query)
           progress
           progressVolumes
           repeat
-          priority
-          private
           notes
           startedAt {
             year
@@ -183,6 +243,9 @@ function KanisyncApi:getUser()
     Viewer {
       id
       name
+      mediaListOptions {
+        scoreFormat
+      }
     }
   }
   ]]
@@ -196,6 +259,101 @@ function KanisyncApi:getUser()
   end
 
   return result.data.Viewer
+end
+
+---Updates the reading status for a user's list entry
+---@param list_entry_id number
+---@param status ReadingStatus
+---@return table result
+---@return nil error
+---@overload fun(query: string, variables?: table): nil, string
+function KanisyncApi:updateMediaListStatus(list_entry_id, status)
+  local mutation = [[
+  mutation ($listEntryId: Int, $status: MediaListStatus) {
+    SaveMediaListEntry(id: $listEntryId, status: $status) {
+      id
+      status
+    }
+  }
+  ]]
+
+  local variables = {
+    listEntryId = list_entry_id,
+    status = status,
+  }
+
+  local result, error = self:request(mutation, variables)
+
+  if error then
+    return nil, error
+  end
+  if not result.data or not result.data.SaveMediaListEntry then
+    return nil, "AniList returned an invalid response"
+  end
+
+  return result.data.SaveMediaListEntry
+end
+
+---@param list_entry_id number
+---@param note string
+---@return table result
+---@return nil error
+---@overload fun(query: string, variables?: table): nil, string
+function KanisyncApi:updateMediaListNote(list_entry_id, note)
+  local mutation = [[
+  mutation ($listEntryId: Int!, $notes: String!) {
+    SaveMediaListEntry(id: $listEntryId, notes: $notes) {
+        id
+        notes
+    }
+  }
+  ]]
+
+  local variables = {
+    listEntryId = list_entry_id,
+    notes = note,
+  }
+
+  local result, error = self:request(mutation, variables)
+
+  if error then
+    return nil, error
+  end
+  if not result.data or not result.data.SaveMediaListEntry then
+    return nil, "AniList returned an invalid response"
+  end
+
+  return result.data.SaveMediaListEntry
+end
+
+---@return table result
+---@return nil error
+---@overload fun(query: string, variables?: table): nil, string
+function KanisyncApi:updateMediaListScore(list_entry_id, score)
+  local mutation = [[
+  mutation ($listEntryId: Int!, $score: Float!) {
+    SaveMediaListEntry(id: $listEntryId, score: $score) {
+        id
+        score
+    }
+  }
+  ]]
+
+  local variables = {
+    listEntryId = list_entry_id,
+    score = score
+  }
+
+  local result, error = self:request(mutation, variables)
+
+  if error then
+    return nil, error
+  end
+  if not result.data or not result.data.SaveMediaListEntry then
+    return nil, "AniList returned an invalid response"
+  end
+
+  return result.data.SaveMediaListEntry
 end
 
 return KanisyncApi

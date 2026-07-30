@@ -5,6 +5,7 @@ local Geom = require("ui/geometry")
 local ImageWidget = require("ui/widget/imagewidget")
 local InfoMessage = require("ui/widget/infomessage")
 local InputDialog = require("ui/widget/inputdialog")
+local SpinWidget = require("ui/widget/spinwidget")
 local Menu = require("ui/widget/menu")
 local NetworkMgr = require("ui/network/manager")
 local RenderImage = require("ui/renderimage")
@@ -13,23 +14,44 @@ local Size = require("ui/size")
 local T = require("ffi/util").template
 local _ = require("gettext")
 
+local statuses = {
+    { text = _("Reading"),   value = "CURRENT" },
+    { text = _("Planning"),  value = "PLANNING" },
+    { text = _("Completed"), value = "COMPLETED" },
+    { text = _("On hold"),   value = "PAUSED" },
+    { text = _("Dropped"),   value = "DROPPED" },
+}
+
+local function getStatusLabel(value)
+    for status_index = 1, #statuses do
+        local status = statuses[status_index]
+        if status.value == value then
+            return status.text
+        end
+    end
+    return value
+end
+
+---@class KanisyncUI
+---@field plugin Kanisync
 local KanisyncUI = {}
 KanisyncUI.__index = KanisyncUI
 
-function KanisyncUI:new()
+function KanisyncUI:new(plugin)
     local obj = setmetatable({}, self)
-    -- obj.init()
+    obj:init(plugin)
     return obj
 end
 
--- function KanisyncUI.init()
--- end
-
 ---@param plugin Kanisync
+function KanisyncUI:init(plugin)
+    self.plugin = plugin
+end
+
 ---@param anilist_data table
 ---@param username string
-function KanisyncUI:main_menu(plugin, anilist_data, username)
-    local is_token_provided = plugin:hasToken()
+function KanisyncUI:main_menu(anilist_data, username)
+    local is_token_provided = self.plugin:hasToken()
 
     local menu = {}
     if not is_token_provided then
@@ -39,10 +61,10 @@ function KanisyncUI:main_menu(plugin, anilist_data, username)
             text = _("Connected as ") .. username,
             enabled = false,
         })
-        if anilist_data then
+        if anilist_data ~= nil then
             table.insert(menu, {
-                text = _("Linked to ") .. anilist_data.title,
-                sub_item_table = self.manageEntry(plugin)
+                text = T(_('Linked to "%1"'), anilist_data.title),
+                sub_item_table = self:manageEntry(anilist_data)
             })
         else
             table.insert(menu, {
@@ -50,7 +72,7 @@ function KanisyncUI:main_menu(plugin, anilist_data, username)
                 keep_menu_open = false,
                 callback = function()
                     NetworkMgr:runWhenOnline(function()
-                        plugin:linkBookToAniList()
+                        self.plugin:linkBookToAniList()
                     end)
                 end,
             })
@@ -61,23 +83,209 @@ function KanisyncUI:main_menu(plugin, anilist_data, username)
         text = _("About"),
         keep_menu_open = true,
         callback = function()
-            self.about(plugin)
+            self.about(self.plugin)
         end,
     })
 
     return menu
 end
 
-function KanisyncUI.manageEntry(plugin)
-    return { {
-        text = _("Change linked book"),
-        keep_menu_open = false,
+function KanisyncUI:manageEntry(anilist_data)
+    local user_metadata = anilist_data.user_metadata
+
+    local hasNotes = user_metadata.notes ~= nil and user_metadata.notes ~= ""
+    local hasScore = user_metadata.score ~= nil
+    return {
+        {
+            text = _("Sync"),
+            callback = function()
+                local id = anilist_data.id
+                local media, error = self.plugin.api:getMedia(id)
+                if error then
+                    self.errorMessage(error)
+                    return
+                end
+                self.plugin:saveCurrentBookAniListData(media)
+            end
+        },
+        {
+            text = T(_("Status: %1"), getStatusLabel(user_metadata.status)),
+            sub_item_table = self:updateStatusMenu(anilist_data)
+        },
+        {
+            text = hasNotes and _("Edit note") or _("Add note"),
+            callback = function()
+                local search_query = user_metadata.notes
+                local dialog
+                dialog = InputDialog:new {
+                    title = hasNotes and _("Edit note") or _("Add note"),
+                    description = hasNotes and _("Edit your personal note for this AniList entry.") or _("Add a personal note to this AniList entry."),
+                    input = search_query,
+                    buttons = {
+                        {
+                            {
+                                text = _("Cancel"),
+                                id = "close",
+                                callback = function()
+                                    UIManager:close(dialog)
+                                end,
+                            },
+                            {
+                                text = _("Submit"),
+                                is_enter_default = true,
+                                callback = function()
+                                    local query = dialog:getInputText()
+                                    UIManager:close(dialog)
+                                    NetworkMgr:runWhenOnline(function()
+                                        local result, error = self.plugin.api:updateMediaListNote(user_metadata.id, query)
+                                        if error then
+                                            self.errorMessage(error)
+                                            return
+                                        end
+                                        self.plugin:updateCurrentBookUserMetadata("notes", result.notes)
+                                    end)
+                                end,
+                            },
+                        },
+                    },
+                }
+                UIManager:show(dialog)
+                dialog:onShowKeyboard()
+            end
+        },
+        {
+            text = T(_("Score: %1"),
+                user_metadata.score and
+                (user_metadata.score .. self.plugin.score_formats[self.plugin.user.mediaListOptions.scoreFormat].maximum) or
+                "Not rated"),
+            callback = function()
+                local score_format_name = self.plugin.user.mediaListOptions.scoreFormat
+                local score_format = self.plugin.score_formats[score_format_name]
+                if not score_format then
+                    self.errorMessage(_("Unable to determine your AniList score format."))
+                    return
+                end
+
+                local function saveScore(score)
+                    NetworkMgr:runWhenOnline(function()
+                        local result, error = self.plugin.api:updateMediaListScore(user_metadata.id, score)
+                        if error then
+                            self.errorMessage(error)
+                            return
+                        end
+                        self.plugin:updateCurrentBookUserMetadata("score", result.score)
+                    end)
+                end
+
+                local uses_spin_widget = score_format_name == "POINT_3"
+                    or score_format_name == "POINT_5"
+                    or score_format_name == "POINT_10"
+                if uses_spin_widget then
+                    UIManager:show(SpinWidget:new {
+                        title_text = hasScore and _("Edit score") or _("Add score"),
+                        info_text = T(_("%1 (%2-%3)"), score_format.label, score_format.minimum, score_format.maximum),
+                        value = user_metadata.score or score_format.minimum,
+                        value_min = score_format.minimum,
+                        value_max = score_format.maximum,
+                        value_step = score_format.step,
+                        value_hold_step = score_format.step,
+                        precision = "%d",
+                        ok_text = _("Save"),
+                        callback = function(spin)
+                            saveScore(spin.value)
+                        end,
+                    })
+                    return
+                end
+
+                local dialog
+                dialog = InputDialog:new {
+                    title = hasScore and _("Edit score") or _("Add score"),
+                    description = T(_("Enter a %1 score from %2 to %3."), score_format.label, score_format.minimum, score_format.maximum),
+                    input = hasScore and tostring(user_metadata.score) or "",
+                    input_type = "number",
+                    buttons = {
+                        {
+                            {
+                                text = _("Cancel"),
+                                id = "close",
+                                callback = function()
+                                    UIManager:close(dialog)
+                                end,
+                            },
+                            {
+                                text = _("Save"),
+                                is_enter_default = true,
+                                callback = function()
+                                    local score = tonumber(dialog:getInputText())
+                                    local valid_step = score and math.abs(score / score_format.step
+                                        - math.floor(score / score_format.step + 0.5)) < 0.000001
+                                    if not valid_step or score < score_format.minimum or score > score_format.maximum then
+                                        self.errorMessage(T(_("Enter a score from %1 to %2 in increments of %3."),
+                                            score_format.minimum, score_format.maximum, score_format.step))
+                                        return
+                                    end
+                                    UIManager:close(dialog)
+                                    saveScore(score)
+                                end,
+                            },
+                        },
+                    },
+                }
+                UIManager:show(dialog)
+                dialog:onShowKeyboard()
+            end
+        },
+        {
+            text = _("Change linked book"),
+            keep_menu_open = false,
+            callback = function()
+                NetworkMgr:runWhenOnline(function()
+                    self.plugin:linkBookToAniList()
+                end)
+            end,
+        },
+        {
+            text = _("Unlink book"),
+            callback = function()
+                self.plugin:unlinkBook()
+            end
+        },
+    }
+end
+
+---@param anilist_data table
+function KanisyncUI:updateStatusMenu(anilist_data)
+    ---@type table
+    local status_items = {}
+    ---@type ReadingStatus
+    local selected_status = anilist_data.user_metadata.status
+    for status_index = 1, #statuses do
+        local status = statuses[status_index]
+        table.insert(status_items, {
+            text = _(status.text),
+            radio = true,
+            checked_func = function()
+                return selected_status == status.value
+            end,
+            callback = function()
+                selected_status = status.value
+            end
+        })
+    end
+
+    table.insert(status_items, {
+        text = _("Save"),
         callback = function()
-            NetworkMgr:runWhenOnline(function()
-                plugin:linkBookToAniList()
-            end)
-        end,
-    } }
+            local result, error = self.plugin.api:updateMediaListStatus(anilist_data.user_metadata.id, selected_status)
+            if error then
+                self.errorMessage(error)
+            end
+            self.plugin:updateCurrentBookUserMetadata("status", result.status)
+        end
+    })
+
+    return status_items
 end
 
 function KanisyncUI.about(plugin)
