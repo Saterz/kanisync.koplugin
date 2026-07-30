@@ -17,8 +17,6 @@ A KOReader plugin to sync your reading progress with [AniList](https://anilist.c
 
 ## Getting Started
 
-WIP
-
 ### Prerequisites
 
 - An [AniList](https://anilist.co) account. You can signup at [https://anilist.co/signup](https://anilist.co/signup)
