@@ -156,10 +156,15 @@ function KanisyncUI:manageEntry(anilist_data)
             end
         },
         {
-            text = T(_("Score: %1"),
-                user_metadata.score and
-                (user_metadata.score .. self.plugin.score_formats[self.plugin.user.mediaListOptions.scoreFormat].maximum) or
-                "Not rated"),
+            text = user_metadata.score
+                and T(
+                    _("Score: %1 / %2"),
+                    user_metadata.score,
+                    self.plugin.score_formats[
+                    self.plugin.user.mediaListOptions.scoreFormat
+                    ].maximum
+                )
+                or _("Score: Not rated"),
             callback = function()
                 local score_format_name = self.plugin.user.mediaListOptions.scoreFormat
                 local score_format = self.plugin.score_formats[score_format_name]
