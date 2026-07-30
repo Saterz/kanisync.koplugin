@@ -53,7 +53,7 @@ function Kanisync:init()
 
     local user, error = self.api:getUser()
     if error then
-        logger.error("Kanisync | An error occurred when fetching current user: ", error)
+        logger.err("Kanisync | An error occurred when fetching current user: ", error)
     end
     self.user = user
 end
