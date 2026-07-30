@@ -57,6 +57,8 @@ local SCORE_FORMATS = {
 ---| "PAUSED" Paused watching/reading
 ---| "REPEATING" Re-watching/reading
 
+---@alias KanisyncEntry { id: number, title: string?, user_metadata: { id: number?, status: ReadingStatus, score: number?, progress: number?, progress_volumes: number?, notes: string? }, fetched_at: number }
+
 ---@class Kanisync
 ---@field ui table KOReader UI instance injected by PluginLoader
 local Kanisync = WidgetContainer:extend {
@@ -104,10 +106,12 @@ function Kanisync:addToMainMenu(menu_items)
     }
 end
 
+---@return boolean
 function Kanisync:hasToken()
     return self.token ~= nil and self.token ~= ""
 end
 
+---@return KanisyncEntry?
 function Kanisync:getCurrentBookAniListData()
     return self.ui.doc_settings:readSetting("kanisync")
 end
@@ -142,7 +146,6 @@ end
 
 ---@param key string
 ---@param value any
----@return nil
 function Kanisync:updateCurrentBookAniListData(key, value)
     local anilist_data = self.ui.doc_settings:readSetting("kanisync")
     anilist_data[key] = value
@@ -154,7 +157,6 @@ end
 ---Updates the user metadata of the current book.
 ---@param key string
 ---@param value any
----@return nil
 function Kanisync:updateCurrentBookUserMetadata(key, value)
     local anilist_data = self.ui.doc_settings:readSetting("kanisync")
     anilist_data.user_metadata[key] = value
@@ -163,6 +165,7 @@ function Kanisync:updateCurrentBookUserMetadata(key, value)
     self.ui.doc_settings:flush()
 end
 
+---@return { title: string?, metadata_title: string?, authors: string?, series: string?, series_index: number?, language: string?, keywords: string?, description: string?, filepath: string, pages: number }
 function Kanisync:getCurrentBookDetails()
     local props = self.ui.doc_props
     local file = self.ui.document.file

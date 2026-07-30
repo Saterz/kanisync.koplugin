@@ -48,7 +48,7 @@ function KanisyncUI:init(plugin)
     self.plugin = plugin
 end
 
----@param anilist_data table
+---@param anilist_data KanisyncEntry?
 ---@param username string
 function KanisyncUI:main_menu(anilist_data, username)
     local is_token_provided = self.plugin:hasToken()
@@ -90,6 +90,7 @@ function KanisyncUI:main_menu(anilist_data, username)
     return menu
 end
 
+---@param anilist_data KanisyncEntry
 function KanisyncUI:manageEntry(anilist_data)
     local user_metadata = anilist_data.user_metadata
 
@@ -137,9 +138,10 @@ function KanisyncUI:manageEntry(anilist_data)
                                     local query = dialog:getInputText()
                                     UIManager:close(dialog)
                                     NetworkMgr:runWhenOnline(function()
-                                        local result, error = self.plugin.api:updateMediaListNote(user_metadata.id, query)
-                                        if error then
-                                            self.errorMessage(error)
+                                        local result, error = self.plugin.api:updateMediaListNote(user_metadata.id,
+                                            anilist_data.id, query)
+                                        if error or not result then
+                                            self.errorMessage(error or _("AniList returned an invalid response"))
                                             return
                                         end
                                         self.plugin:updateCurrentBookUserMetadata("notes", result.notes)
@@ -168,9 +170,10 @@ function KanisyncUI:manageEntry(anilist_data)
 
                 local function saveScore(score)
                     NetworkMgr:runWhenOnline(function()
-                        local result, error = self.plugin.api:updateMediaListScore(user_metadata.id, score)
-                        if error then
-                            self.errorMessage(error)
+                        local result, error = self.plugin.api:updateMediaListScore(user_metadata.id, anilist_data.id,
+                            score)
+                        if error or not result then
+                            self.errorMessage(error or _("AniList returned an invalid response"))
                             return
                         end
                         self.plugin:updateCurrentBookUserMetadata("score", result.score)
@@ -254,7 +257,7 @@ function KanisyncUI:manageEntry(anilist_data)
     }
 end
 
----@param anilist_data table
+---@param anilist_data KanisyncEntry
 function KanisyncUI:updateStatusMenu(anilist_data)
     ---@type table
     local status_items = {}
@@ -277,9 +280,11 @@ function KanisyncUI:updateStatusMenu(anilist_data)
     table.insert(status_items, {
         text = _("Save"),
         callback = function()
-            local result, error = self.plugin.api:updateMediaListStatus(anilist_data.user_metadata.id, selected_status)
-            if error then
-                self.errorMessage(error)
+            local result, error = self.plugin.api:updateMediaListStatus(anilist_data.user_metadata.id, anilist_data.id,
+                selected_status)
+            if error or not result then
+                self.errorMessage(error or _("AniList returned an invalid response"))
+                return
             end
             self.plugin:updateCurrentBookUserMetadata("status", result.status)
         end

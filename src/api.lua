@@ -262,15 +262,15 @@ function KanisyncApi:getUser()
 end
 
 ---Updates the reading status for a user's list entry
----@param list_entry_id number
+---@param list_entry_id number|nil
+---@param media_id number|nil
 ---@param status ReadingStatus
----@return table result
----@return nil error
----@overload fun(query: string, variables?: table): nil, string
-function KanisyncApi:updateMediaListStatus(list_entry_id, status)
+---@return table|nil
+---@return string|nil
+function KanisyncApi:updateMediaListStatus(list_entry_id, media_id, status)
   local mutation = [[
-  mutation ($listEntryId: Int, $status: MediaListStatus) {
-    SaveMediaListEntry(id: $listEntryId, status: $status) {
+  mutation ($listEntryId: Int, $mediaId: Int, $status: MediaListStatus) {
+    SaveMediaListEntry(id: $listEntryId, mediaId: $mediaId, status: $status) {
       id
       status
     }
@@ -279,6 +279,7 @@ function KanisyncApi:updateMediaListStatus(list_entry_id, status)
 
   local variables = {
     listEntryId = list_entry_id,
+    mediaId = media_id,
     status = status,
   }
 
@@ -294,15 +295,15 @@ function KanisyncApi:updateMediaListStatus(list_entry_id, status)
   return result.data.SaveMediaListEntry
 end
 
----@param list_entry_id number
+---@param list_entry_id number|nil
+---@param media_id number|nil
 ---@param note string
----@return table result
----@return nil error
----@overload fun(query: string, variables?: table): nil, string
-function KanisyncApi:updateMediaListNote(list_entry_id, note)
+---@return table|nil
+---@return string|nil
+function KanisyncApi:updateMediaListNote(list_entry_id, media_id, note)
   local mutation = [[
-  mutation ($listEntryId: Int!, $notes: String!) {
-    SaveMediaListEntry(id: $listEntryId, notes: $notes) {
+  mutation ($listEntryId: Int, $mediaId: Int, $notes: String!) {
+    SaveMediaListEntry(id: $listEntryId, mediaId: $mediaId, notes: $notes) {
         id
         notes
     }
@@ -311,6 +312,7 @@ function KanisyncApi:updateMediaListNote(list_entry_id, note)
 
   local variables = {
     listEntryId = list_entry_id,
+    mediaId = media_id,
     notes = note,
   }
 
@@ -326,13 +328,15 @@ function KanisyncApi:updateMediaListNote(list_entry_id, note)
   return result.data.SaveMediaListEntry
 end
 
----@return table result
----@return nil error
----@overload fun(query: string, variables?: table): nil, string
-function KanisyncApi:updateMediaListScore(list_entry_id, score)
+---@param list_entry_id number|nil
+---@param media_id number|nil
+---@param score number
+---@return table|nil result
+---@return string|nil error
+function KanisyncApi:updateMediaListScore(list_entry_id, media_id, score)
   local mutation = [[
-  mutation ($listEntryId: Int!, $score: Float!) {
-    SaveMediaListEntry(id: $listEntryId, score: $score) {
+  mutation ($listEntryId: Int, $mediaId: Int, $score: Float!) {
+    SaveMediaListEntry(id: $listEntryId, mediaId: $mediaId, score: $score) {
         id
         score
     }
@@ -341,6 +345,7 @@ function KanisyncApi:updateMediaListScore(list_entry_id, score)
 
   local variables = {
     listEntryId = list_entry_id,
+    mediaId = media_id,
     score = score
   }
 
