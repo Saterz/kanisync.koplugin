@@ -49,13 +49,20 @@ function Kanisync:init()
 
     self.kanisync_ui = KanisyncUI:new()
     self.api = KanisyncApi:new(self.token)
+
+
+    local user, error = self.api:getUser()
+    if error then
+        logger.error("Kanisync | An error occurred when fetching current user: ", error)
+    end
+    self.user = user
 end
 
 function Kanisync:addToMainMenu(menu_items)
     menu_items.kanisync = {
         text = _("Kanisync"),
         sorting_hint = "tools",
-        sub_item_table = self.kanisync_ui:main_menu(self)
+        sub_item_table = self.kanisync_ui:main_menu(self, self.user.name)
     }
 end
 

@@ -26,13 +26,17 @@ end
 -- end
 
 ---@param plugin Kanisync
-function KanisyncUI:main_menu(plugin)
+function KanisyncUI:main_menu(plugin, username)
     local is_token_provided = plugin:hasToken()
 
     local menu = {}
     if not is_token_provided then
         table.insert(menu, { text = "Token not found", enabled = false })
     else
+        table.insert(menu, {
+            text = _("Welcome ") .. username,
+            enabled = false,
+        })
         table.insert(menu, {
             text = _("Link book to AniList"),
             keep_menu_open = false,
