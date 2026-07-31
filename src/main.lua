@@ -199,14 +199,14 @@ function Kanisync:linkBookToAniList(search_query)
         or book_details.title
 
     if not search_query or search_query:match("^%s*$") then
-        self.kanisync_ui.errorMessage(_("No title was found in the book metadata."))
+        self.kanisync_ui.ephemeralMessage(_("No title was found in the book metadata."))
         return
     end
 
     local media_list, error = self.api:searchMedia(search_query)
 
     if not media_list then
-        self.kanisync_ui.errorMessage(error or _("An error occurred while fetching the media list."))
+        self.kanisync_ui.ephemeralMessage(error or _("An error occurred while fetching the media list."))
         return
     end
 
