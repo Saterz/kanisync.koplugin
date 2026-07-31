@@ -131,6 +131,9 @@ function Kanisync:saveCurrentBookAniListData(media)
     self.ui.doc_settings:saveSetting("kanisync", {
         id = media.id,
         title = title,
+        format = media.format,
+        chapters = media.chapters,
+        volumes = media.volumes,
 
         user_metadata = {
             id = user_list_entry.id or nil,
