@@ -102,10 +102,13 @@ function KanisyncUI:manageEntry(anilist_data)
             callback = function()
                 local id = anilist_data.id
                 local media, error = self.plugin.api:getMedia(id)
-                if error then
-                    self.errorMessage(error)
+                if error or not media then
+                    self.ephemeralMessage(error or _("AniList returned an invalid response"))
                     return
                 end
+
+                self.ephemeralMessage(_("Changes pulled from AniList."))
+
                 self.plugin:saveCurrentBookAniListData(media)
             end
         },
@@ -141,7 +144,7 @@ function KanisyncUI:manageEntry(anilist_data)
                                         local result, error = self.plugin.api:updateMediaListNote(user_metadata.id,
                                             anilist_data.id, query)
                                         if error or not result then
-                                            self.errorMessage(error or _("AniList returned an invalid response"))
+                                            self.ephemeralMessage(error or _("AniList returned an invalid response"))
                                             return
                                         end
                                         self.plugin:updateCurrentBookUserMetadata("notes", result.notes)
@@ -169,7 +172,7 @@ function KanisyncUI:manageEntry(anilist_data)
                 local score_format_name = self.plugin.user.mediaListOptions.scoreFormat
                 local score_format = self.plugin.score_formats[score_format_name]
                 if not score_format then
-                    self.errorMessage(_("Unable to determine your AniList score format."))
+                    self.ephemeralMessage(_("Unable to determine your AniList score format."))
                     return
                 end
 
@@ -178,7 +181,7 @@ function KanisyncUI:manageEntry(anilist_data)
                         local result, error = self.plugin.api:updateMediaListScore(user_metadata.id, anilist_data.id,
                             score)
                         if error or not result then
-                            self.errorMessage(error or _("AniList returned an invalid response"))
+                            self.ephemeralMessage(error or _("AniList returned an invalid response"))
                             return
                         end
                         self.plugin:updateCurrentBookUserMetadata("score", result.score)
@@ -229,7 +232,7 @@ function KanisyncUI:manageEntry(anilist_data)
                                     local valid_step = score and math.abs(score / score_format.step
                                         - math.floor(score / score_format.step + 0.5)) < 0.000001
                                     if not valid_step or score < score_format.minimum or score > score_format.maximum then
-                                        self.errorMessage(T(_("Enter a score from %1 to %2 in increments of %3."),
+                                        self.ephemeralMessage(T(_("Enter a score from %1 to %2 in increments of %3."),
                                             score_format.minimum, score_format.maximum, score_format.step))
                                         return
                                     end
@@ -288,7 +291,7 @@ function KanisyncUI:updateStatusMenu(anilist_data)
             local result, error = self.plugin.api:updateMediaListStatus(anilist_data.user_metadata.id, anilist_data.id,
                 selected_status)
             if error or not result then
-                self.errorMessage(error or _("AniList returned an invalid response"))
+                self.ephemeralMessage(error or _("AniList returned an invalid response"))
                 return
             end
             self.plugin:updateCurrentBookUserMetadata("status", result.status)
@@ -389,7 +392,7 @@ function KanisyncUI:previewMedia(media, select_callback, cover_loader)
         ok_callback = function()
             local error = select_callback(media)
             if error then
-                self.errorMessage(error)
+                self.ephemeralMessage(error)
                 return
             end
             UIManager:show(InfoMessage:new {
@@ -515,7 +518,7 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
 end
 
 ---@param error_message string
-function KanisyncUI.errorMessage(error_message, dialog)
+function KanisyncUI.ephemeralMessage(error_message, dialog)
     if dialog ~= nil then
         UIManager:close(dialog)
     end
