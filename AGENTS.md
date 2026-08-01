@@ -1,3 +1,3 @@
 - Read the relevant parts of KOReader's source code before answering
-- The `anilist_token` the user has to provide in `kani_config.lua` is highly confidential. It should NEVER in any circumstances be outputted in KOReader's logs
+- The `anilist_token` the user provides in `kanisync_settings.lua` is highly confidential. It should NEVER in any circumstances be outputted in KOReader's logs
 - NEVER use `_` as a throwaway loop variable or local name when gettext is imported as `_`; use a descriptive name so `_()` cannot be shadowed

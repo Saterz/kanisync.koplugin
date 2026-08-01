@@ -77,14 +77,11 @@ function Kanisync:init()
     self.ui.menu:registerToMainMenu(self)
     self.settings = LuaSettings:open(SETTINGS_FILE)
 
-    local config_loaded, KanisyncConfig = pcall(require, "kani_config")
-    if not config_loaded then
-        logger.warn("Kanisync | An error occurred while loading the config file.")
-    end
-    if KanisyncConfig and KanisyncConfig.anilist_token ~= "" then
-        self.token = KanisyncConfig.anilist_token
+    local token = self.settings:readSetting("anilist_token")
+    if type(token) == "string" and token ~= "" then
+        self.token = token
     else
-        logger.warn("Kanisync | No token found in kani_config.lua")
+        logger.warn("Kanisync | No token found in kanisync_settings.lua")
     end
 
     self.kanisync_ui = KanisyncUI:new(self)
