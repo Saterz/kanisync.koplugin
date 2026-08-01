@@ -5,15 +5,18 @@ local Geom = require("ui/geometry")
 local ImageWidget = require("ui/widget/imagewidget")
 local InfoMessage = require("ui/widget/infomessage")
 local InputDialog = require("ui/widget/inputdialog")
+local PathChooser = require("ui/widget/pathchooser")
 local SpinWidget = require("ui/widget/spinwidget")
 local Menu = require("ui/widget/menu")
 local MultiConfirmBox = require("ui/widget/multiconfirmbox")
 local NetworkMgr = require("ui/network/manager")
 local RenderImage = require("ui/renderimage")
-local Screen = require("device").screen
+local Device = require("device")
+local Screen = Device.screen
 local Size = require("ui/size")
 -- local logger = require("logger")
-local T = require("ffi/util").template
+local ffiUtil = require("ffi/util")
+local T = ffiUtil.template
 local _ = require("gettext")
 
 local statuses = {
@@ -407,9 +410,72 @@ function KanisyncUI:preferencesMenu()
     return menu
 end
 
+function KanisyncUI:autoLinkFoldersMenu()
+    local folders = self.plugin:getAutoLinkFolders()
+    local menu = {
+        {
+            text = _("Add auto-link folder"),
+            keep_menu_open = true,
+            hold_callback = function()
+                UIManager:show(InfoMessage:new {
+                    text = _("Books opened from an auto-link folder or its subfolders will automatically be searched on AniList."),
+                })
+            end,
+            callback = function(touchmenu_instance)
+                UIManager:show(PathChooser:new {
+                    path = G_reader_settings:readSetting("home_dir") or Device.home_dir,
+                    select_directory = true,
+                    select_file = false,
+                    show_files = false,
+                    onConfirm = function(path)
+                        for folder_index = 1, #folders do
+                            if folders[folder_index] == path then return end
+                        end
+                        table.insert(folders, path)
+                        self.plugin.settings:saveSetting("auto_link_folders", folders):flush()
+                        touchmenu_instance.item_table = self:autoLinkFoldersMenu()
+                        touchmenu_instance:updateItems()
+                    end,
+                })
+            end,
+        }
+    }
+
+    for folder_index = 1, #folders do
+        local selected_folder = folders[folder_index]
+        table.insert(menu, {
+            text = ffiUtil.basename(selected_folder),
+            keep_menu_open = true,
+            callback = function(touchmenu_instance)
+                UIManager:show(ConfirmBox:new {
+                    text = T(_("Remove auto-link folder?\n%1"), selected_folder),
+                    ok_text = _("Remove"),
+                    ok_callback = function()
+                        for current_index = 1, #folders do
+                            if folders[current_index] == selected_folder then
+                                table.remove(folders, current_index)
+                                self.plugin.settings:saveSetting("auto_link_folders", folders):flush()
+                                touchmenu_instance.item_table = self:autoLinkFoldersMenu()
+                                touchmenu_instance:updateItems()
+                                return
+                            end
+                        end
+                    end,
+                })
+            end,
+        })
+    end
+
+    return menu
+end
+
 function KanisyncUI:settingsMenu()
     local menu = {}
 
+    table.insert(menu, {
+        text = _("Auto-link folders"),
+        sub_item_table = self:autoLinkFoldersMenu()
+    })
     table.insert(menu, {
         text = _("Preferences"),
         sub_item_table = self:preferencesMenu()

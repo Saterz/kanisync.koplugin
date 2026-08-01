@@ -7,10 +7,12 @@ A KOReader plugin to sync your reading progress with AniList
 -- local Dispatcher = require("dispatcher")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local DataStorage = require("datastorage")
+local UIManager = require("ui/uimanager")
 local logger = require("logger")
 local LuaSettings = require("luasettings")
 local NetworkMgr = require("ui/network/manager")
-local T = require("ffi/util").template
+local ffiUtil = require("ffi/util")
+local T = ffiUtil.template
 local _ = require("gettext")
 
 local KanisyncUI = require("ui")
@@ -122,6 +124,44 @@ end
 ---@return boolean
 function Kanisync:hasToken()
     return self.token ~= nil and self.token ~= ""
+end
+
+function Kanisync:getAutoLinkFolders()
+    local folders = self.settings:readSetting("auto_link_folders")
+    if type(folders) == "table" then
+        return folders
+    end
+
+    return {}
+end
+
+function Kanisync:onReaderReady()
+    local document = self.ui.document
+    local file = document and ffiUtil.realpath(document.file)
+    if not self:hasToken() or self:getCurrentBookAniListData() or not file then
+        return
+    end
+
+    local should_auto_link = false
+    local folders = self:getAutoLinkFolders()
+    for folder_index = 1, #folders do
+        local folder = folders[folder_index]
+        if type(folder) == "string"
+            and (folder == "/" or file:sub(1, #folder + 1) == folder .. "/") then
+            should_auto_link = true
+            break
+        end
+    end
+    if not should_auto_link then return end
+
+    UIManager:nextTick(function()
+        NetworkMgr:runWhenOnline(function()
+            if not self.ui.document or self.ui.document ~= document or self:getCurrentBookAniListData() then
+                return
+            end
+            self:linkBookToAniList()
+        end)
+    end)
 end
 
 ---@return KanisyncEntry?

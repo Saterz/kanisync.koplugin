@@ -26,5 +26,8 @@
   },
   "typeChecking": {
     "mode": "Strict"
+  },
+  "diagnostics": {
+    "globals": ["G_reader_settings"]
   }
 }
