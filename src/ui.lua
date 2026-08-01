@@ -57,7 +57,14 @@ function KanisyncUI:main_menu(anilist_data, username)
 
     local menu = {}
     if not is_token_provided then
-        table.insert(menu, { text = "Token not found", enabled = false })
+        table.insert(menu, {
+            text = "Token not found",
+            callback = function()
+                UIManager:show(InfoMessage:new {
+                    text = _("No AniList token is configured.\n\nOn a computer, create settings/kanisync_settings.lua in the KOReader installation directory and add your anilist_token.\n\nRestart KOReader after saving the file. See the Kanisync README for details."),
+                })
+            end
+        })
     else
         table.insert(menu, {
             text = T(_("Connected as %1"), username),
