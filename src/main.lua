@@ -63,6 +63,7 @@ local SCORE_FORMATS = {
 
 ---@class Kanisync
 ---@field ui table KOReader UI instance injected by PluginLoader
+---@field version string The plugin's version imported from the `_meta.lua` file
 local Kanisync = WidgetContainer:extend {
     name = "kanisync",
     is_doc_only = true,
@@ -86,7 +87,15 @@ function Kanisync:init()
 
     self.kanisync_ui = KanisyncUI:new(self)
     self.score_formats = SCORE_FORMATS
-    self.api = KanisyncApi:new(self.token)
+
+    local filter_adult_content =
+        self.settings:readSetting("filter_adult_content")
+
+    if filter_adult_content == nil then
+        filter_adult_content = true
+    end
+
+    self.api = KanisyncApi:new(self.token, filter_adult_content)
 
     self.user = {}
     if self.token then

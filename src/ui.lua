@@ -86,13 +86,17 @@ function KanisyncUI:main_menu(anilist_data, username)
                 end,
             })
         end
+        table.insert(menu, {
+            text = _("Settings"),
+            sub_item_table = self:settingsMenu()
+        })
     end
 
     table.insert(menu, {
         text = _("About"),
         keep_menu_open = true,
         callback = function()
-            self.about(self.plugin)
+            self:about()
         end,
     })
 
@@ -384,9 +388,39 @@ function KanisyncUI:progressMenu(anilist_data)
     return menu
 end
 
-function KanisyncUI.about(plugin)
+function KanisyncUI:preferencesMenu()
+    local menu = {}
+
+    table.insert(menu, {
+        text = _("Show 18+ content"),
+        checked_func = function()
+            return self.plugin.settings:isFalse("filter_adult_content")
+        end,
+        keep_menu_open = true,
+        callback = function()
+            self.plugin.settings:flipNilOrTrue("filter_adult_content")
+            self.plugin.api.filter_adult_content = self.plugin.settings:nilOrTrue("filter_adult_content")
+            self.plugin.settings:flush()
+        end,
+    })
+
+    return menu
+end
+
+function KanisyncUI:settingsMenu()
+    local menu = {}
+
+    table.insert(menu, {
+        text = _("Preferences"),
+        sub_item_table = self:preferencesMenu()
+    })
+
+    return menu
+end
+
+function KanisyncUI:about()
     UIManager:show(InfoMessage:new({
-        text = "Kanisync\n\nSync your reading progress with AniList\n\nVersion: v" .. plugin.version,
+        text = "Kanisync\n\nSync your reading progress with AniList\n\nVersion: v" .. self.plugin.version,
     }))
 end
 

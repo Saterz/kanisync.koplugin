@@ -26,15 +26,17 @@ local function normalizeJsonNull(value)
   return value
 end
 
-function KanisyncApi:new(token)
+function KanisyncApi:new(token, filter_adult_content)
   local obj = setmetatable({}, self)
-  obj:init(token)
+  obj:init(token, filter_adult_content)
   return obj
 end
 
 ---@param token string
-function KanisyncApi:init(token)
+---@param filter_adult_content boolean
+function KanisyncApi:init(token, filter_adult_content)
   self.token = token
+  self.filter_adult_content = filter_adult_content ~= false
 end
 
 ---@param query string
@@ -93,9 +95,10 @@ end
 
 function KanisyncApi:getMedia(media_id)
   local query = [[
-  query ($id: Int!) {
-    Media(id: $id, type: MANGA) {
+  query ($id: Int!, $isAdult: Boolean) {
+    Media(id: $id, type: MANGA, isAdult: $isAdult) {
       id
+      isAdult
       title {
         userPreferred
         romaji
@@ -141,6 +144,10 @@ function KanisyncApi:getMedia(media_id)
     id = media_id
   }
 
+  if self.filter_adult_content then
+    variables.isAdult = false
+  end
+
   local result, error = self:request(query, variables)
 
   if error then
@@ -159,10 +166,11 @@ end
 ---@overload fun(query: string, variables?: table): nil, string
 function KanisyncApi:searchMedia(search_query)
   local query = [[
-  query ($search: String!) {
+  query ($search: String!, $isAdult: Boolean) {
     Page(page: 1, perPage: 15) {
-      media(search: $search, type: MANGA, sort: SEARCH_MATCH) {
+      media(search: $search, type: MANGA, isAdult: $isAdult, sort: SEARCH_MATCH) {
         id
+        isAdult
         title {
           userPreferred
           romaji
@@ -208,6 +216,10 @@ function KanisyncApi:searchMedia(search_query)
   local variables = {
     search = search_query
   }
+
+  if self.filter_adult_content then
+    variables.isAdult = false
+  end
 
   local result, error = self:request(query, variables)
 
