@@ -203,7 +203,7 @@ function KanisyncApi:searchMedia(search_query)
       }
     }
   }
-]]
+  ]]
 
   local variables = {
     search = search_query

@@ -10,6 +10,7 @@ local DataStorage = require("datastorage")
 local logger = require("logger")
 local LuaSettings = require("luasettings")
 local NetworkMgr = require("ui/network/manager")
+local T = require("ffi/util").template
 local _ = require("gettext")
 
 local KanisyncUI = require("ui")
@@ -129,9 +130,8 @@ function Kanisync:saveCurrentBookAniListData(media)
         or titles.romaji
         or titles.native
     local user_list_entry = media.mediaListEntry or {}
-    self.ui.doc_settings:delSetting("kanisync")
-    self.ui.doc_settings:flush()
-    self.ui.doc_settings:saveSetting("kanisync", {
+
+    local saved_setting = {
         id = media.id,
         title = title,
         format = media.format,
@@ -152,8 +152,14 @@ function Kanisync:saveCurrentBookAniListData(media)
         },
 
         fetched_at = os.time()
-    })
+    }
+
+    self.ui.doc_settings:delSetting("kanisync")
     self.ui.doc_settings:flush()
+    self.ui.doc_settings:saveSetting("kanisync", saved_setting)
+    self.ui.doc_settings:flush()
+
+    return saved_setting
 end
 
 ---@param key string
@@ -233,7 +239,15 @@ function Kanisync:linkBookToAniList(search_query)
                 end
                 media.mediaListEntry = result
             end
-            self:saveCurrentBookAniListData(media)
+            local anilist_data = self:saveCurrentBookAniListData(media)
+            local user_list_entry = anilist_data.user_list_entry
+            local next_chapter = user_list_entry.progress + 1
+            local next_volume = user_list_entry.progress_volumes + 1
+            if next_chapter <= (anilist_data.chapters or math.huge) or next_volume <= (anilist_data.volumes or math.huge) then
+                self.kanisync_ui:progressUpdatePrompt(anilist_data)
+            else
+                self.kanisync_ui.ephemeralMessage(T(_("Linked to %1."), anilist_data.title))
+            end
         end,
         function(refined_query)
             self:linkBookToAniList(refined_query)

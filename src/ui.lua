@@ -7,6 +7,7 @@ local InfoMessage = require("ui/widget/infomessage")
 local InputDialog = require("ui/widget/inputdialog")
 local SpinWidget = require("ui/widget/spinwidget")
 local Menu = require("ui/widget/menu")
+local MultiConfirmBox = require("ui/widget/multiconfirmbox")
 local NetworkMgr = require("ui/network/manager")
 local RenderImage = require("ui/renderimage")
 local Screen = require("device").screen
@@ -382,6 +383,42 @@ function KanisyncUI.about(plugin)
     }))
 end
 
+function KanisyncUI:progressUpdatePrompt(anilist_data)
+    local user_list_entry = anilist_data.user_list_entry
+
+    local next_chapter = user_list_entry.progress + 1
+    local next_volume = user_list_entry.progress_volumes + 1
+    UIManager:show(MultiConfirmBox:new {
+        text = T(_("Linked to %1. Update progress?"), anilist_data.title),
+        choice1_text = T(_("Set chapter to %1"), next_chapter),
+        choice1_enabled = next_chapter <= (anilist_data.chapters or math.huge),
+        choice1_callback = function()
+            NetworkMgr:runWhenOnline(function()
+                local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
+                    { progress = user_list_entry.progress + 1 })
+                if error or not result then
+                    self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                    return
+                end
+                self.plugin:updateCurrentBookUserMetadata("progress", result.progress)
+            end)
+        end,
+        choice2_text = T(_("Set volume to %1"), next_volume),
+        choice2_enabled = next_volume <= (anilist_data.volumes or math.huge),
+        choice2_callback = function()
+            NetworkMgr:runWhenOnline(function()
+                local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
+                    { progressVolumes = user_list_entry.progress_volumes + 1 })
+                if error or not result then
+                    self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                    return
+                end
+                self.plugin:updateCurrentBookUserMetadata("progress_volumes", result.progressVolumes)
+            end)
+        end,
+    })
+end
+
 local function getMediaTitle(media)
     local title = media.title
     return title.userPreferred or title.english or title.romaji or title.native
@@ -470,10 +507,6 @@ function KanisyncUI:previewMedia(media, select_callback, cover_loader)
                 self.ephemeralMessage(error)
                 return
             end
-            UIManager:show(InfoMessage:new {
-                text = T(_("Linked to %1."), title),
-                timeout = 3,
-            })
         end,
     }
 
