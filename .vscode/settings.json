@@ -4,5 +4,12 @@
     "editor.formatOnSave": true
   },
   "Lua.runtime.version": "LuaJIT",
-  "cSpell.words": ["anilist", "kani", "Kanisync", "koplugin", "koreader"]
+  "cSpell.words": [
+    "anilist",
+    "kani",
+    "Kanisync",
+    "koplugin",
+    "koreader",
+    "romaji"
+  ]
 }
