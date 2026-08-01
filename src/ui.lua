@@ -60,7 +60,7 @@ function KanisyncUI:main_menu(anilist_data, username)
         table.insert(menu, { text = "Token not found", enabled = false })
     else
         table.insert(menu, {
-            text = _("Connected as ") .. username,
+            text = T(_("Connected as %1"), username),
             enabled = false,
         })
         if anilist_data ~= nil then
@@ -625,13 +625,13 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
     end)
 end
 
----@param error_message string
-function KanisyncUI.ephemeralMessage(error_message, dialog)
+---@param message string
+function KanisyncUI.ephemeralMessage(message, dialog)
     if dialog ~= nil then
         UIManager:close(dialog)
     end
     UIManager:show(InfoMessage:new {
-        text = _(error_message),
+        text = _(message),
         timeout = 3,
     })
 end
