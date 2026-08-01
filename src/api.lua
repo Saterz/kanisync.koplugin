@@ -3,6 +3,10 @@ local ltn12 = require("ltn12")
 local JSON = require("rapidjson")
 -- local logger = require("logger")
 
+---@alias AniListFuzzyDateInput { year?: integer, month?: integer, day?: integer }
+
+---@alias MediaListUpdateValues { progress?: integer, progressVolumes?: integer, score?: number, notes?: string, status?: ReadingStatus, repeat_count?: integer, priority?: integer, private?: boolean, hiddenFromStatusLists?: boolean, customLists?: string[], advancedScores?: number[], startedAt?: AniListFuzzyDateInput, completedAt?: AniListFuzzyDateInput }
+
 ---@class KanisyncApi
 ---@field token string User provided AniList token
 local KanisyncApi = {}
@@ -261,26 +265,103 @@ function KanisyncApi:getUser()
   return result.data.Viewer
 end
 
----Updates the reading status for a user's list entry
----@param list_entry_id number|nil
----@param media_id number|nil
----@param status ReadingStatus
----@return table|nil
----@return string|nil
-function KanisyncApi:updateMediaListStatus(list_entry_id, media_id, status)
+---Creates or updates an AniList media-list entry.
+---@param list_entry_id? integer Existing MediaList entry ID
+---@param media_id? integer AniList media ID, used when no entry ID is available
+---@param values MediaListUpdateValues Fields to update
+---@return table|nil result Updated MediaList entry
+---@return string|nil error_message Request or response error
+function KanisyncApi:updateMediaList(list_entry_id, media_id, values)
+  if list_entry_id == nil and media_id == nil then
+    return nil, "A list entry ID or media ID is required"
+  end
+
+  if type(values) ~= "table" then
+    return nil, "Update values are required"
+  end
+
   local mutation = [[
-  mutation ($listEntryId: Int, $mediaId: Int, $status: MediaListStatus) {
-    SaveMediaListEntry(id: $listEntryId, mediaId: $mediaId, status: $status) {
+  mutation UpdateMediaListEntry(
+    $listEntryId: Int
+    $mediaId: Int
+    $status: MediaListStatus
+    $score: Float
+    $progress: Int
+    $progressVolumes: Int
+    $repeat: Int
+    $priority: Int
+    $private: Boolean
+    $notes: String
+    $hiddenFromStatusLists: Boolean
+    $customLists: [String]
+    $advancedScores: [Float]
+    $startedAt: FuzzyDateInput
+    $completedAt: FuzzyDateInput
+  ) {
+    SaveMediaListEntry(
+      id: $listEntryId
+      mediaId: $mediaId
+      status: $status
+      score: $score
+      progress: $progress
+      progressVolumes: $progressVolumes
+      repeat: $repeat
+      priority: $priority
+      private: $private
+      notes: $notes
+      hiddenFromStatusLists: $hiddenFromStatusLists
+      customLists: $customLists
+      advancedScores: $advancedScores
+      startedAt: $startedAt
+      completedAt: $completedAt
+    ) {
       id
+      mediaId
       status
+      score
+      progress
+      progressVolumes
+      repeat
+      priority
+      private
+      notes
+      hiddenFromStatusLists
+      customLists
+      advancedScores
+      startedAt {
+        year
+        month
+        day
+      }
+      completedAt {
+        year
+        month
+        day
+      }
+      updatedAt
     }
   }
   ]]
 
   local variables = {
     listEntryId = list_entry_id,
-    mediaId = media_id,
-    status = status,
+
+    -- Use mediaId only when an entry ID is unavailable.
+    mediaId = list_entry_id == nil and media_id or nil,
+
+    status = values.status,
+    score = values.score,
+    progress = values.progress,
+    progressVolumes = values.progressVolumes,
+    ["repeat"] = values.repeat_count,
+    priority = values.priority,
+    private = values.private,
+    notes = values.notes,
+    hiddenFromStatusLists = values.hiddenFromStatusLists,
+    customLists = values.customLists,
+    advancedScores = values.advancedScores,
+    startedAt = values.startedAt,
+    completedAt = values.completedAt,
   }
 
   local result, error = self:request(mutation, variables)
@@ -292,73 +373,7 @@ function KanisyncApi:updateMediaListStatus(list_entry_id, media_id, status)
     return nil, "AniList returned an invalid response"
   end
 
-  return result.data.SaveMediaListEntry
-end
-
----@param list_entry_id number|nil
----@param media_id number|nil
----@param note string
----@return table|nil
----@return string|nil
-function KanisyncApi:updateMediaListNote(list_entry_id, media_id, note)
-  local mutation = [[
-  mutation ($listEntryId: Int, $mediaId: Int, $notes: String!) {
-    SaveMediaListEntry(id: $listEntryId, mediaId: $mediaId, notes: $notes) {
-        id
-        notes
-    }
-  }
-  ]]
-
-  local variables = {
-    listEntryId = list_entry_id,
-    mediaId = media_id,
-    notes = note,
-  }
-
-  local result, error = self:request(mutation, variables)
-
-  if error then
-    return nil, error
-  end
-  if not result.data or not result.data.SaveMediaListEntry then
-    return nil, "AniList returned an invalid response"
-  end
-
-  return result.data.SaveMediaListEntry
-end
-
----@param list_entry_id number|nil
----@param media_id number|nil
----@param score number
----@return table|nil result
----@return string|nil error
-function KanisyncApi:updateMediaListScore(list_entry_id, media_id, score)
-  local mutation = [[
-  mutation ($listEntryId: Int, $mediaId: Int, $score: Float!) {
-    SaveMediaListEntry(id: $listEntryId, mediaId: $mediaId, score: $score) {
-        id
-        score
-    }
-  }
-  ]]
-
-  local variables = {
-    listEntryId = list_entry_id,
-    mediaId = media_id,
-    score = score
-  }
-
-  local result, error = self:request(mutation, variables)
-
-  if error then
-    return nil, error
-  end
-  if not result.data or not result.data.SaveMediaListEntry then
-    return nil, "AniList returned an invalid response"
-  end
-
-  return result.data.SaveMediaListEntry
+  return result.data.SaveMediaListEntry, nil
 end
 
 return KanisyncApi

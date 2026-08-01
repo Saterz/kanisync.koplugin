@@ -11,6 +11,7 @@ local NetworkMgr = require("ui/network/manager")
 local RenderImage = require("ui/renderimage")
 local Screen = require("device").screen
 local Size = require("ui/size")
+-- local logger = require("logger")
 local T = require("ffi/util").template
 local _ = require("gettext")
 
@@ -92,34 +93,40 @@ end
 
 ---@param anilist_data KanisyncEntry
 function KanisyncUI:manageEntry(anilist_data)
-    local user_metadata = anilist_data.user_metadata
+    local user_list_entry = anilist_data.user_list_entry
 
-    local hasNotes = user_metadata.notes ~= nil and user_metadata.notes ~= ""
-    local hasScore = user_metadata.score ~= nil
+    local hasNotes = user_list_entry.notes ~= nil and user_list_entry.notes ~= ""
+    local hasScore = user_list_entry.score ~= nil
     return {
         {
             text = _("Pull changes"),
             callback = function()
-                local id = anilist_data.id
-                local media, error = self.plugin.api:getMedia(id)
-                if error or not media then
-                    self.ephemeralMessage(error or _("AniList returned an invalid response"))
-                    return
-                end
+                NetworkMgr:runWhenOnline(function()
+                    local id = anilist_data.id
+                    local media, error = self.plugin.api:getMedia(id)
+                    if error or not media then
+                        self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                        return
+                    end
 
-                self.ephemeralMessage(_("Changes pulled from AniList."))
+                    self.ephemeralMessage(_("Changes pulled from AniList."))
 
-                self.plugin:saveCurrentBookAniListData(media)
+                    self.plugin:saveCurrentBookAniListData(media)
+                end)
             end
         },
         {
-            text = T(_("Status: %1"), getStatusLabel(user_metadata.status)),
+            text = _("Progress"),
+            sub_item_table = self:progressMenu(anilist_data)
+        },
+        {
+            text = T(_("Status: %1"), getStatusLabel(user_list_entry.status)),
             sub_item_table = self:updateStatusMenu(anilist_data)
         },
         {
             text = hasNotes and _("Edit note") or _("Add note"),
             callback = function()
-                local search_query = user_metadata.notes
+                local search_query = user_list_entry.notes
                 local dialog
                 dialog = InputDialog:new {
                     title = hasNotes and _("Edit note") or _("Add note"),
@@ -141,8 +148,8 @@ function KanisyncUI:manageEntry(anilist_data)
                                     local query = dialog:getInputText()
                                     UIManager:close(dialog)
                                     NetworkMgr:runWhenOnline(function()
-                                        local result, error = self.plugin.api:updateMediaListNote(user_metadata.id,
-                                            anilist_data.id, query)
+                                        local result, error = self.plugin.api:updateMediaList(user_list_entry.id,
+                                            anilist_data.id, { notes = query })
                                         if error or not result then
                                             self.ephemeralMessage(error or _("AniList returned an invalid response"))
                                             return
@@ -159,10 +166,10 @@ function KanisyncUI:manageEntry(anilist_data)
             end
         },
         {
-            text = user_metadata.score
+            text = user_list_entry.score
                 and T(
                     _("Score: %1 / %2"),
-                    user_metadata.score,
+                    user_list_entry.score,
                     self.plugin.score_formats[
                     self.plugin.user.mediaListOptions.scoreFormat
                     ].maximum
@@ -178,8 +185,8 @@ function KanisyncUI:manageEntry(anilist_data)
 
                 local function saveScore(score)
                     NetworkMgr:runWhenOnline(function()
-                        local result, error = self.plugin.api:updateMediaListScore(user_metadata.id, anilist_data.id,
-                            score)
+                        local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
+                            { score = score })
                         if error or not result then
                             self.ephemeralMessage(error or _("AniList returned an invalid response"))
                             return
@@ -195,7 +202,7 @@ function KanisyncUI:manageEntry(anilist_data)
                     UIManager:show(SpinWidget:new {
                         title_text = hasScore and _("Edit score") or _("Add score"),
                         info_text = T(_("%1 (%2-%3)"), score_format.label, score_format.minimum, score_format.maximum),
-                        value = user_metadata.score or score_format.minimum,
+                        value = user_list_entry.score or score_format.minimum,
                         value_min = score_format.minimum,
                         value_max = score_format.maximum,
                         value_step = score_format.step,
@@ -213,7 +220,7 @@ function KanisyncUI:manageEntry(anilist_data)
                 dialog = InputDialog:new {
                     title = hasScore and _("Edit score") or _("Add score"),
                     description = T(_("Enter a %1 score from %2 to %3."), score_format.label, score_format.minimum, score_format.maximum),
-                    input = hasScore and tostring(user_metadata.score) or "",
+                    input = hasScore and tostring(user_list_entry.score) or "",
                     input_type = "number",
                     buttons = {
                         {
@@ -270,7 +277,7 @@ function KanisyncUI:updateStatusMenu(anilist_data)
     ---@type table
     local status_items = {}
     ---@type ReadingStatus
-    local selected_status = anilist_data.user_metadata.status
+    local selected_status = anilist_data.user_list_entry.status
     for status_index = 1, #statuses do
         local status = statuses[status_index]
         table.insert(status_items, {
@@ -288,17 +295,85 @@ function KanisyncUI:updateStatusMenu(anilist_data)
     table.insert(status_items, {
         text = _("Save"),
         callback = function()
-            local result, error = self.plugin.api:updateMediaListStatus(anilist_data.user_metadata.id, anilist_data.id,
-                selected_status)
-            if error or not result then
-                self.ephemeralMessage(error or _("AniList returned an invalid response"))
-                return
-            end
-            self.plugin:updateCurrentBookUserMetadata("status", result.status)
+            NetworkMgr:runWhenOnline(function()
+                local result, error = self.plugin.api:updateMediaList(anilist_data.user_list_entry.id, anilist_data.id,
+                    { status = selected_status })
+                if error or not result then
+                    self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                    return
+                end
+                self.plugin:updateCurrentBookUserMetadata("status", result.status)
+            end)
         end
     })
 
     return status_items
+end
+
+function KanisyncUI:progressMenu(anilist_data)
+    local user_list_entry = anilist_data.user_list_entry
+
+    local chapter_text = anilist_data.chapters and T("Chapter %1 of %2", user_list_entry.progress, anilist_data.chapters) or
+        T("Chapter %1", user_list_entry.progress)
+    local volume_text = anilist_data.volumes and
+        T("Volume %1 of %2", user_list_entry.progress_volumes, anilist_data.volumes) or
+        T("Volume %1", user_list_entry.progress_volumes)
+    local menu = {
+        {
+            text = _(chapter_text),
+            callback = function()
+                UIManager:show(SpinWidget:new {
+                    title_text = _("Chapter progress"),
+                    value = user_list_entry.progress,
+                    value_min = 0,
+                    value_max = anilist_data.chapters or math.huge,
+                    value_step = 1,
+                    value_hold_step = 10,
+                    unit = _("chapters"),
+                    ok_text = _("Set"),
+                    callback = function(spin)
+                        NetworkMgr:runWhenOnline(function()
+                            local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
+                                { progress = spin.value })
+                            if error or not result then
+                                self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                                return
+                            end
+                            self.plugin:updateCurrentBookUserMetadata("progress", result.progress)
+                        end)
+                    end
+                })
+            end
+        },
+        {
+            text = _(volume_text),
+            callback = function()
+                UIManager:show(SpinWidget:new {
+                    title_text = _("Volume progress"),
+                    value = user_list_entry.progress_volumes,
+                    value_min = 0,
+                    value_max = anilist_data.volumes or math.huge,
+                    value_step = 1,
+                    value_hold_step = 10,
+                    unit = _("volumes"),
+                    ok_text = _("Set"),
+                    callback = function(spin)
+                        NetworkMgr:runWhenOnline(function()
+                            local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
+                                { progressVolumes = spin.value })
+                            if error or not result then
+                                self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                                return
+                            end
+                            self.plugin:updateCurrentBookUserMetadata("progress_volumes", result.progressVolumes)
+                        end)
+                    end
+                })
+            end
+        }
+    }
+
+    return menu
 end
 
 function KanisyncUI.about(plugin)

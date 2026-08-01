@@ -9,6 +9,7 @@ local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local DataStorage = require("datastorage")
 local logger = require("logger")
 local LuaSettings = require("luasettings")
+local NetworkMgr = require("ui/network/manager")
 local _ = require("gettext")
 
 local KanisyncUI = require("ui")
@@ -57,7 +58,7 @@ local SCORE_FORMATS = {
 ---| "PAUSED" Paused watching/reading
 ---| "REPEATING" Re-watching/reading
 
----@alias KanisyncEntry { id: number, title: string?, user_metadata: { id: number?, status: ReadingStatus, score: number?, progress: number?, progress_volumes: number?, notes: string? }, fetched_at: number }
+---@alias KanisyncEntry { id: number, title: string?, user_list_entry: { id: number?, status: ReadingStatus, score: number?, progress: number?, progress_volumes: number?, notes: string? }, fetched_at: number }
 
 ---@class Kanisync
 ---@field ui table KOReader UI instance injected by PluginLoader
@@ -91,11 +92,13 @@ function Kanisync:init()
 
     self.user = {}
     if self.token then
-        local user, error = self.api:getUser()
-        if error then
-            logger.err("Kanisync | An error occurred while fetching user: ", error)
-        end
-        self.user = user
+        NetworkMgr:runWhenOnline(function()
+            local user, error = self.api:getUser()
+            if error then
+                logger.err("Kanisync | An error occurred while fetching user: ", error)
+            end
+            self.user = user or {}
+        end)
     end
 end
 
@@ -135,13 +138,17 @@ function Kanisync:saveCurrentBookAniListData(media)
         chapters = media.chapters,
         volumes = media.volumes,
 
-        user_metadata = {
-            id = user_list_entry.id or nil,
+        user_list_entry = {
+            id = user_list_entry.id,
             status = user_list_entry.status,
-            score = user_list_entry.score or nil,
-            progress = user_list_entry.progress,
-            progress_volumes = user_list_entry.progressVolumes,
-            notes = user_list_entry.notes
+            score = user_list_entry.score,
+            notes = user_list_entry.notes,
+            --[[
+            We are setting the progress and volume progress values to 0 if they don't exist
+            as it's exactly what AniList does to new additions to the user's library
+            ]]
+            progress = user_list_entry.progress or 0,
+            progress_volumes = user_list_entry.progressVolumes or 0
         },
 
         fetched_at = os.time()
@@ -164,7 +171,7 @@ end
 ---@param value any
 function Kanisync:updateCurrentBookUserMetadata(key, value)
     local anilist_data = self.ui.doc_settings:readSetting("kanisync")
-    anilist_data.user_metadata[key] = value
+    anilist_data.user_list_entry[key] = value
 
     self.ui.doc_settings:saveSetting("kanisync", anilist_data)
     self.ui.doc_settings:flush()
@@ -220,7 +227,7 @@ function Kanisync:linkBookToAniList(search_query)
             ]]
             if not media.mediaListEntry or not media.mediaListEntry.status then
                 local list_entry_id = media.mediaListEntry and media.mediaListEntry.id
-                local result, updateError = self.api:updateMediaListStatus(list_entry_id, media.id, "CURRENT")
+                local result, updateError = self.api:updateMediaList(list_entry_id, media.id, { status = "CURRENT" })
                 if updateError or not result then
                     return updateError or _("AniList returned an invalid response")
                 end
