@@ -135,7 +135,7 @@ function KanisyncUI:manageEntry(anilist_data)
             sub_item_table = self:progressMenu(anilist_data)
         },
         {
-            text = T(_("Status: %1"), getStatusLabel(user_list_entry.status)),
+            text = user_list_entry.status and T(_("Reading status: %1"), getStatusLabel(user_list_entry.status)) or _("Reading status: Not in library"),
             sub_item_table = self:updateStatusMenu(anilist_data)
         },
         {

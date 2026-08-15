@@ -279,23 +279,16 @@ function Kanisync:linkBookToAniList(search_query)
             We assume that if the media entry doesn't have a user status then the entry is not present in its library.
             Updating its status will add it in its library.
             ]]
-            if not media.mediaListEntry or not media.mediaListEntry.status then
-                local list_entry_id = media.mediaListEntry and media.mediaListEntry.id
-                local result, updateError = self.api:updateMediaList(list_entry_id, media.id, { status = "CURRENT" })
-                if updateError or not result then
-                    return updateError or _("AniList returned an invalid response")
-                end
-                media.mediaListEntry = result
-            end
-            local anilist_data = self:saveCurrentBookAniListData(media)
-            local user_list_entry = anilist_data.user_list_entry
-            local next_chapter = user_list_entry.progress + 1
-            local next_volume = user_list_entry.progress_volumes + 1
-            if next_chapter <= (anilist_data.chapters or math.huge) or next_volume <= (anilist_data.volumes or math.huge) then
-                self.kanisync_ui:progressUpdatePrompt(anilist_data)
-            else
-                self.kanisync_ui.ephemeralMessage(T(_("Linked to %1."), anilist_data.title))
-            end
+            -- if not media.mediaListEntry or not media.mediaListEntry.status then
+            --     local list_entry_id = media.mediaListEntry and media.mediaListEntry.id
+            --     local result, updateError = self.api:updateMediaList(list_entry_id, media.id, { status = "CURRENT" })
+            --     if updateError or not result then
+            --         return updateError or _("AniList returned an invalid response")
+            --     end
+            --     media.mediaListEntry = result
+            -- end
+            local anilist_data = self:saveBookAniListData(media)
+            self.kanisync_ui:progressUpdatePrompt(anilist_data)
         end,
         function(refined_query)
             self:linkBookToAniList(refined_query)
