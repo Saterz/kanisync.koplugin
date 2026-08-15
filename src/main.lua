@@ -65,6 +65,8 @@ local SCORE_FORMATS = {
 
 ---@class Kanisync
 ---@field ui table KOReader UI instance injected by PluginLoader
+---@field fullname string
+---@field description string
 ---@field version string The plugin's version imported from the `_meta.lua` file
 local Kanisync = WidgetContainer:extend {
     name = "kanisync",

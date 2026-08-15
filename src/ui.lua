@@ -486,7 +486,7 @@ end
 
 function KanisyncUI:about()
     UIManager:show(InfoMessage:new({
-        text = "Kanisync\n\nSync your reading progress with AniList\n\nVersion: v" .. self.plugin.version,
+        text = T(_("%1\n\n%2\n\nVersion: v%3"), self.plugin.fullname, self.plugin.description, self.plugin.version),
     }))
 end
 
