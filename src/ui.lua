@@ -730,7 +730,7 @@ function KanisyncUI:previewMedia(media, back_callback, select_callback, cover_lo
             end
         end,
         cancel_text = _("Back"),
-        cancel_callback = cancel_callback
+        cancel_callback = back_callback
     }
 
     local cover_url = type(media.coverImage) == "table"
