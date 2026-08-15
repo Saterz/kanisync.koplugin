@@ -333,7 +333,7 @@ function KanisyncUI:progressMenu(anilist_data)
     local volume_text = anilist_data.volumes and
         T("Volume %1 of %2", user_list_entry.progress_volumes, anilist_data.volumes) or
         T("Volume %1", user_list_entry.progress_volumes)
-        
+
     local function updateProgressSpinWidget(title_text, unit, value, value_max, callback)
         return SpinWidget:new {
             title_text = _(title_text),
@@ -346,8 +346,8 @@ function KanisyncUI:progressMenu(anilist_data)
             ok_text = _("Set"),
             callback = callback
          }
-     end
-        
+    end
+
     local menu = {
         {
             text = _(chapter_text),
@@ -497,16 +497,16 @@ function KanisyncUI:progressUpdatePrompt(anilist_data)
         left_max = anilist_data.chapters or math.huge,
         left_step = 1,
         left_hold_step = 10,
-        
+
         right_text = _("Volume progress"),
         right_value = user_list_entry.progress_volumes,
         right_min = 0,
         right_max = anilist_data.volumes or math.huge,
         right_step = 1,
         right_hold_step = 10,
-        
+
         ok_text = _("Set"),
-        
+
         callback = function(chapter_progress, volume_progress)
             NetworkMgr:runWhenOnline(function()
                 local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id, { progress = chapter_progress, progressVolumes = volume_progress })
