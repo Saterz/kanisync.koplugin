@@ -775,9 +775,12 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
         local thumbnail_width = Screen:scaleBySize(48)
         local thumbnail_height = Screen:scaleBySize(68)
         local thumbnail_buffers = {}
+        local thumbnail_state_width = thumbnail_width + Size.span.horizontal_default
         local items = {
             {
                 text = _("Adjust search..."),
+                -- Cancel out the menu's state-w
+                indent = -thumbnail_state_width,
                 callback = function()
                     UIManager:nextTick(function()
                         self.searchDialog(search_query, search_callback)
@@ -827,7 +830,7 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
         chooser = Menu:new {
             title = T(_("AniList results for “%1”"), search_query),
             item_table = items,
-            state_w = thumbnail_width + Size.span.horizontal_default,
+            state_w = thumbnail_state_width,
             items_per_page = 6,
             multilines_forced = true,
             dithered = true,
