@@ -169,7 +169,7 @@ function KanisyncUI:manageEntry(anilist_data)
                                             self.ephemeralMessage(error or _("AniList returned an invalid response"))
                                             return
                                         end
-                                        self.plugin:updateCurrentBookUserMetadata("notes", result.notes)
+                                        self.plugin:saveBookUserMetadata(result)
                                     end)
                                 end,
                             },
@@ -206,7 +206,7 @@ function KanisyncUI:manageEntry(anilist_data)
                             self.ephemeralMessage(error or _("AniList returned an invalid response"))
                             return
                         end
-                        self.plugin:updateCurrentBookUserMetadata("score", result.score)
+                        self.plugin:saveBookUserMetadata(result)
                     end)
                 end
 
@@ -318,7 +318,7 @@ function KanisyncUI:updateStatusMenu(anilist_data)
                     self.ephemeralMessage(error or _("AniList returned an invalid response"))
                     return
                 end
-                self.plugin:updateCurrentBookUserMetadata("status", result.status)
+                self.plugin:saveBookUserMetadata(result)
             end)
         end
     })
@@ -362,7 +362,7 @@ function KanisyncUI:progressMenu(anilist_data)
                                 self.ephemeralMessage(error or _("AniList returned an invalid response"))
                                 return
                             end
-                            self.plugin:updateCurrentBookUserMetadata("progress", result.progress)
+                            self.plugin:saveBookUserMetadata(result)
                         end)
                     end)
                 UIManager:show(dialog)
@@ -380,7 +380,7 @@ function KanisyncUI:progressMenu(anilist_data)
                                 self.ephemeralMessage(error or _("AniList returned an invalid response"))
                                 return
                             end
-                            self.plugin:updateCurrentBookUserMetadata("progress_volumes", result.progressVolumes)
+                            self.plugin:saveBookUserMetadata(result)
                         end)
                     end)
                 UIManager:show(dialog)
@@ -520,8 +520,7 @@ function KanisyncUI:progressUpdatePrompt(anilist_data)
                     self.ephemeralMessage(error or _("AniList returned an invalid response"))
                     return
                 end
-                self.plugin:updateCurrentBookUserMetadata("progress", result.progress)
-                self.plugin:updateCurrentBookUserMetadata("progress_volumes", result.progressVolumes)
+                self.plugin:saveBookUserMetadata(result)
             end)
         end
     })

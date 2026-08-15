@@ -221,14 +221,27 @@ function Kanisync:updateCurrentBookAniListData(key, value)
 end
 
 ---Updates the user metadata of the current book.
----@param key string
----@param value any
-function Kanisync:updateCurrentBookUserMetadata(key, value)
+---@param user_metadata table
+function Kanisync:saveBookUserMetadata(user_metadata)
     local anilist_data = self.ui.doc_settings:readSetting("kanisync")
-    anilist_data.user_list_entry[key] = value
+    if not anilist_data then
+        return
+    end
 
-    self.ui.doc_settings:saveSetting("kanisync", anilist_data)
-    self.ui.doc_settings:flush()
+    anilist_data.user_list_entry = {
+        id = user_metadata.id,
+        status = user_metadata.status,
+        score = user_metadata.score,
+        notes = user_metadata.notes,
+        --[[
+        We are setting the progress and volume progress values to 0 if they don't exist
+        as it's exactly what AniList does to new additions to the user's library
+        ]]
+        progress = user_metadata.progress or 0,
+        progress_volumes = user_metadata.progressVolumes or 0
+    }
+
+    self.ui.doc_settings:saveSetting("kanisync", anilist_data):flush()
 end
 
 ---@return { title: string?, metadata_title: string?, authors: string?, series: string?, series_index: number?, language: string?, keywords: string?, description: string?, filepath: string, pages: number }
