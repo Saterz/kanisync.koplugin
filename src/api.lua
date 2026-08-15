@@ -109,6 +109,8 @@ function KanisyncApi:getMedia(media_id)
       chapters
       volumes
       startDate {
+        day
+        month
         year
       }
       coverImage {
@@ -181,6 +183,8 @@ function KanisyncApi:searchMedia(search_query)
         chapters
         volumes
         startDate {
+          day
+          month
           year
         }
         coverImage {

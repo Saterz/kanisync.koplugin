@@ -185,6 +185,7 @@ function Kanisync:saveBookAniListData(media)
         format = media.format,
         chapters = media.chapters,
         volumes = media.volumes,
+        start_date = media.startDate,
 
         user_list_entry = {
             id = user_list_entry.id,
@@ -196,10 +197,10 @@ function Kanisync:saveBookAniListData(media)
             as it's exactly what AniList does to new additions to the user's library
             ]]
             progress = user_list_entry.progress or 0,
-            progress_volumes = user_list_entry.progressVolumes or 0
+            progress_volumes = user_list_entry.progressVolumes or 0,
+            started_at = user_list_entry.startedAt,
+            completed_at = user_list_entry.completedAt,
         },
-
-        fetched_at = os.time()
     }
 
     self.ui.doc_settings:saveSetting("kanisync", saved_setting):flush()
@@ -225,7 +226,9 @@ function Kanisync:saveBookUserMetadata(user_metadata)
         as it's exactly what AniList does to new additions to the user's library
         ]]
         progress = user_metadata.progress or 0,
-        progress_volumes = user_metadata.progressVolumes or 0
+        progress_volumes = user_metadata.progressVolumes or 0,
+        started_at = user_metadata.startedAt,
+        completed_at = user_metadata.completedAt,
     }
 
     self.ui.doc_settings:saveSetting("kanisync", anilist_data):flush()
