@@ -12,7 +12,7 @@ local logger = require("logger")
 local LuaSettings = require("luasettings")
 local NetworkMgr = require("ui/network/manager")
 local ffiUtil = require("ffi/util")
-local T = ffiUtil.template
+-- local T = ffiUtil.template
 local _ = require("gettext")
 
 local KanisyncUI = require("ui")
