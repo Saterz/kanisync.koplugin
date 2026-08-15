@@ -1,8 +1,8 @@
---[[--
+--[[
 A KOReader plugin to sync your reading progress with AniList
 
 @module koplugin.Kanisync
---]] --
+]]
 
 -- local Dispatcher = require("dispatcher")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
