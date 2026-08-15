@@ -699,9 +699,10 @@ function KanisyncUI.searchDialog(search_query, search_callback, no_results)
 end
 
 ---@param media table
+---@param back_callback function
 ---@param select_callback fun(media: table): string|nil
 ---@param cover_loader fun(url: string): string|nil
-function KanisyncUI:previewMedia(media, select_callback, cover_loader)
+function KanisyncUI:previewMedia(media, back_callback, select_callback, cover_loader)
     local title = getMediaTitle(media)
     local details = {}
     if media.format then
@@ -717,7 +718,8 @@ function KanisyncUI:previewMedia(media, select_callback, cover_loader)
         table.insert(details, T(_("%1 volumes"), media.volumes))
     end
 
-    local confirm = ConfirmBox:new {
+    local confirm
+    confirm = ConfirmBox:new {
         text = title .. (#details > 0 and "\n" .. table.concat(details, " • ") or ""),
         ok_text = _("Link"),
         ok_callback = function()
@@ -727,6 +729,8 @@ function KanisyncUI:previewMedia(media, select_callback, cover_loader)
                 return
             end
         end,
+        cancel_text = _("Back"),
+        cancel_callback = cancel_callback
     }
 
     local cover_url = type(media.coverImage) == "table"
@@ -789,6 +793,7 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
             },
         }
 
+        local chooser
         for media_index = 1, #media_list do
             local media = media_list[media_index]
 
@@ -820,13 +825,14 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
                 state = cover_widget,
                 callback = function()
                     UIManager:nextTick(function()
-                        self:previewMedia(media, select_callback, cover_loader)
+                        self:previewMedia(media, function()
+                            self:mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader)
+                        end, select_callback, cover_loader)
                     end)
                 end,
             })
         end
 
-        local chooser
         chooser = Menu:new {
             title = T(_("AniList results for “%1”"), search_query),
             item_table = items,
