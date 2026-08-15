@@ -652,7 +652,7 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
         return
     end
 
-    local loading = InfoMessage:new { text = _("Loading cover images…") }
+    local loading = InfoMessage:new { text = _("Loading…") }
     UIManager:show(loading)
     UIManager:nextTick(function()
         local thumbnail_width = Screen:scaleBySize(48)
