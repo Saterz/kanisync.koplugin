@@ -506,7 +506,7 @@ function KanisyncUI:progressUpdatePrompt(anilist_data)
         right_step = 1,
         right_hold_step = 10,
         
-        ok_text = _("Set")
+        ok_text = _("Set"),
         
         callback = function(chapter_progress, volume_progress)
             if chapter_progress ~= user_list_entry.progress then
