@@ -334,12 +334,7 @@ function KanisyncApi:updateMediaList(list_entry_id, media_id, values)
       progress
       progressVolumes
       repeat
-      priority
-      private
       notes
-      hiddenFromStatusLists
-      customLists
-      advancedScores
       startedAt {
         year
         month
@@ -350,6 +345,7 @@ function KanisyncApi:updateMediaList(list_entry_id, media_id, values)
         month
         day
       }
+      createdAt
       updatedAt
     }
   }
