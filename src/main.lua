@@ -118,7 +118,7 @@ function Kanisync:addToMainMenu(menu_items)
         text = _("Kanisync"),
         sorting_hint = "tools",
         sub_item_table_func = function()
-            return self.kanisync_ui:main_menu(self:getCurrentBookAniListData(), self.user.name)
+            return self.kanisync_ui:main_menu(self:getBookAniListData(), self.user.name)
         end
     }
 end
@@ -140,7 +140,7 @@ end
 function Kanisync:onReaderReady()
     local document = self.ui.document
     local file = document and ffiUtil.realpath(document.file)
-    if not self:hasToken() or self:getCurrentBookAniListData() or not file then
+    if not self:hasToken() or self:getBookAniListData() or not file then
         return
     end
 
@@ -158,7 +158,7 @@ function Kanisync:onReaderReady()
 
     UIManager:nextTick(function()
         NetworkMgr:runWhenOnline(function()
-            if not self.ui.document or self.ui.document ~= document or self:getCurrentBookAniListData() then
+            if not self.ui.document or self.ui.document ~= document or self:getBookAniListData() then
                 return
             end
             self:linkBookToAniList()
@@ -167,11 +167,11 @@ function Kanisync:onReaderReady()
 end
 
 ---@return KanisyncEntry?
-function Kanisync:getCurrentBookAniListData()
+function Kanisync:getBookAniListData()
     return self.ui.doc_settings:readSetting("kanisync")
 end
 
-function Kanisync:saveCurrentBookAniListData(media)
+function Kanisync:saveBookAniListData(media)
     local titles = media.title or {}
     local title = titles.userPreferred
         or titles.english
@@ -202,10 +202,7 @@ function Kanisync:saveCurrentBookAniListData(media)
         fetched_at = os.time()
     }
 
-    self.ui.doc_settings:delSetting("kanisync")
-    self.ui.doc_settings:flush()
-    self.ui.doc_settings:saveSetting("kanisync", saved_setting)
-    self.ui.doc_settings:flush()
+    self.ui.doc_settings:saveSetting("kanisync", saved_setting):flush()
 
     return saved_setting
 end
