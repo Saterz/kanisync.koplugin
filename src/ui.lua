@@ -333,57 +333,52 @@ function KanisyncUI:progressMenu(anilist_data)
     local volume_text = anilist_data.volumes and
         T("Volume %1 of %2", user_list_entry.progress_volumes, anilist_data.volumes) or
         T("Volume %1", user_list_entry.progress_volumes)
+        
+    local function updateProgressSpinWidget(title_text, unit, value, value_max, callback)
+        return SpinWidget:new {
+            title_text = _(title_text),
+            value = value,
+            value_min = 0,
+            value_max = value_max or math.huge,
+            value_step = 1,
+            value_hold_step = 10,
+            unit = _(unit),
+            ok_text = _("Set"),
+            callback = callback(self)
+         }
+     end
+        
     local menu = {
         {
             text = _(chapter_text),
             callback = function()
-                UIManager:show(SpinWidget:new {
-                    title_text = _("Chapter progress"),
-                    value = user_list_entry.progress,
-                    value_min = 0,
-                    value_max = anilist_data.chapters or math.huge,
-                    value_step = 1,
-                    value_hold_step = 10,
-                    unit = _("chapters"),
-                    ok_text = _("Set"),
-                    callback = function(spin)
-                        NetworkMgr:runWhenOnline(function()
-                            local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
-                                { progress = spin.value })
-                            if error or not result then
-                                self.ephemeralMessage(error or _("AniList returned an invalid response"))
-                                return
-                            end
-                            self.plugin:updateCurrentBookUserMetadata("progress", result.progress)
-                        end)
-                    end
-                })
-            end
+                local dialog = updateProgressSpinWidget("Chapter progress", "chapters", user_list_entry.progress, anilist_data.chapters, function(spin)
+                    NetworkMgr:runWhenOnline(function()
+                        local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id, { progress = spin.value })
+                        if error or not result then
+                            self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                            return
+                        end
+                        self.plugin:updateCurrentBookUserMetadata("progress", result.progress)
+                    end)
+                 end)
+                 UIManager:show(dialog)
+             end
         },
         {
             text = _(volume_text),
             callback = function()
-                UIManager:show(SpinWidget:new {
-                    title_text = _("Volume progress"),
-                    value = user_list_entry.progress_volumes,
-                    value_min = 0,
-                    value_max = anilist_data.volumes or math.huge,
-                    value_step = 1,
-                    value_hold_step = 10,
-                    unit = _("volumes"),
-                    ok_text = _("Set"),
-                    callback = function(spin)
-                        NetworkMgr:runWhenOnline(function()
-                            local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
-                                { progressVolumes = spin.value })
-                            if error or not result then
-                                self.ephemeralMessage(error or _("AniList returned an invalid response"))
-                                return
-                            end
-                            self.plugin:updateCurrentBookUserMetadata("progress_volumes", result.progressVolumes)
-                        end)
-                    end
-                })
+                local dialog = updateProgressSpinWidget("Volume progress", "volumes", user_list_entry.progress_volumes, anilist_data.volumes, function(spin)
+                    NetworkMgr:runWhenOnline(function()
+                        local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id, { progressVolumes = spin.value })
+                        if error or not result then
+                            self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                            return
+                        end
+                        self.plugin:updateCurrentBookUserMetadata("progress_volumes", result.progressVolumes)
+                    end)
+                 end)
+                 UIManager:show(dialog)
             end
         }
     }
