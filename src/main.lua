@@ -303,8 +303,7 @@ function Kanisync:linkBookToAniList(search_query)
 end
 
 function Kanisync:unlinkBook()
-    self.ui.doc_settings:delSetting("kanisync")
-    self.ui.doc_settings:flush()
+    self.ui.doc_settings:delSetting("kanisync"):flush()
 end
 
 return Kanisync
