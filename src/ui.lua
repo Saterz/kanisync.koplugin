@@ -345,7 +345,7 @@ function KanisyncUI:progressMenu(anilist_data)
             value_hold_step = 10,
             unit = _(unit),
             ok_text = _("Set"),
-            callback = callback(self)
+            callback = callback
          }
      end
         
