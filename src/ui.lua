@@ -508,27 +508,15 @@ function KanisyncUI:progressUpdatePrompt(anilist_data)
         ok_text = _("Set"),
         
         callback = function(chapter_progress, volume_progress)
-            if chapter_progress ~= user_list_entry.progress then
-                NetworkMgr:runWhenOnline(function()
-                    local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id, { progress = chapter_progress })
-                    if error or not result then
-                        self.ephemeralMessage(error or _("AniList returned an invalid response"))
-                        return
-                    end
-                    self.plugin:updateCurrentBookUserMetadata("progress", result.progress)
-                end)
-            end
-            
-            if volume_progress ~= user_list_entry.progress_volumes then
-                NetworkMgr:runWhenOnline(function()
-                    local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id, { progressVolumes = volume_progress })
-                    if error or not result then
-                        self.ephemeralMessage(error or _("AniList returned an invalid response"))
-                        return
-                    end
-                    self.plugin:updateCurrentBookUserMetadata("progress_volumes", result.progressVolumes)
-                end)
-            end
+            NetworkMgr:runWhenOnline(function()
+                local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id, { progress = chapter_progress, progressVolumes = volume_progress })
+                if error or not result then
+                    self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                    return
+                end
+                self.plugin:updateCurrentBookUserMetadata("progress", result.progress)
+                self.plugin:updateCurrentBookUserMetadata("progress_volumes", result.progressVolumes)
+            end)
         end
     })
 end
