@@ -53,16 +53,6 @@ local SCORE_FORMATS = {
     },
 }
 
----@alias ReadingStatus string "Source: https://docs.anilist.co/reference/enum/medialiststatus#medialiststatus"
----| "CURRENT" Currently watching/reading
----| "PLANNING"	Planning to watch/read
----| "COMPLETED" Finished watching/reading
----| "DROPPED" Stopped watching/reading before completing
----| "PAUSED" Paused watching/reading
----| "REPEATING" Re-watching/reading
-
----@alias KanisyncEntry { id: number, title: string?, user_list_entry: { id: number?, status: ReadingStatus, score: number?, progress: number?, progress_volumes: number?, notes: string? }, fetched_at: number }
-
 ---@class Kanisync
 ---@field ui table KOReader UI instance injected by PluginLoader
 ---@field fullname string
@@ -135,35 +125,6 @@ function Kanisync:getAutoLinkFolders()
     end
 
     return {}
-end
-
-function Kanisync:onReaderReady()
-    local document = self.ui.document
-    local file = document and ffiUtil.realpath(document.file)
-    if not self:hasToken() or self:getBookAniListData() or not file then
-        return
-    end
-
-    local should_auto_link = false
-    local folders = self:getAutoLinkFolders()
-    for folder_index = 1, #folders do
-        local folder = folders[folder_index]
-        if type(folder) == "string"
-            and (folder == "/" or file:sub(1, #folder + 1) == folder .. "/") then
-            should_auto_link = true
-            break
-        end
-    end
-    if not should_auto_link then return end
-
-    UIManager:nextTick(function()
-        NetworkMgr:runWhenOnline(function()
-            if not self.ui.document or self.ui.document ~= document or self:getBookAniListData() then
-                return
-            end
-            self:linkBookToAniList()
-        end)
-    end)
 end
 
 ---@return KanisyncEntry?
@@ -291,7 +252,7 @@ function Kanisync:linkBookToAniList(search_query)
             --     media.mediaListEntry = result
             -- end
             local anilist_data = self:saveBookAniListData(media)
-            self.kanisync_ui:progressUpdatePrompt(anilist_data)
+            self.kanisync_ui:progressUpdatePrompt(anilist_data, "both")
         end,
         function(refined_query)
             self:linkBookToAniList(refined_query)
@@ -304,6 +265,194 @@ end
 
 function Kanisync:unlinkBook()
     self.ui.doc_settings:delSetting("kanisync"):flush()
+end
+
+function Kanisync:getTocEntry(location)
+    local reader_toc = self.ui.toc
+    if not reader_toc or not location then
+        return nil, nil
+    end
+
+    local toc_index = reader_toc:getTocIndexByPage(location, true)
+    if not toc_index then
+        return nil, nil
+    end
+
+    return reader_toc.toc[toc_index], toc_index
+end
+
+function Kanisync:initializeCurrentTocEntry()
+    local reader_toc = self.ui.toc
+    if not reader_toc then
+        return
+    end
+
+    local location
+
+    if self.ui.rolling then
+        -- Reflowable document, such as an EPUB.
+        location = self.ui.document:getXPointer()
+    elseif self.ui.paging then
+        -- Fixed-page document, such as a PDF or CBZ.
+        location = self.ui.paging.current_page
+    end
+
+    if not location then
+        return
+    end
+
+    local current_entry, current_index = self:getTocEntry(location)
+    if not current_entry or not current_index then
+        return
+    end
+
+    self.current_toc_index = current_index
+end
+
+function Kanisync:onReaderReady()
+    self:initializeCurrentTocEntry()
+
+    local document = self.ui.document
+    local file = document and ffiUtil.realpath(document.file)
+    if not self:hasToken() or self:getBookAniListData() or not file then
+        return
+    end
+
+    local should_auto_link = false
+    local folders = self:getAutoLinkFolders()
+    for folder_index = 1, #folders do
+        local folder = folders[folder_index]
+        if type(folder) == "string"
+            and (folder == "/" or file:sub(1, #folder + 1) == folder .. "/") then
+            should_auto_link = true
+            break
+        end
+    end
+    if not should_auto_link then return end
+
+    UIManager:nextTick(function()
+        NetworkMgr:runWhenOnline(function()
+            if not self.ui.document or self.ui.document ~= document or self:getBookAniListData() then
+                return
+            end
+            self:linkBookToAniList()
+        end)
+    end)
+end
+
+local function isChapterTocEntry(toc_entry)
+    local NON_CHAPTER_TITLES = {
+        ["cover"] = true,
+        ["front cover"] = true,
+        ["back cover"] = true,
+        ["title page"] = true,
+        ["half title"] = true,
+        ["copyright"] = true,
+        ["copyright page"] = true,
+        ["legal notice"] = true,
+        ["publication information"] = true,
+        ["publishing information"] = true,
+        ["imprint"] = true,
+        ["table of contents"] = true,
+        ["contents"] = true,
+        ["navigation"] = true,
+        ["colophon"] = true,
+        ["credits"] = true,
+        ["dedication"] = true,
+        ["acknowledgments"] = true,
+        ["acknowledgements"] = true,
+        ["author's note"] = true,
+        ["translator's note"] = true,
+        ["editor's note"] = true,
+        ["about the author"] = true,
+        ["about the translator"] = true,
+        ["about the publisher"] = true,
+        ["about j-novel club"] = true,
+        ["bibliography"] = true,
+        ["references"] = true,
+        ["glossary"] = true,
+        ["index"] = true,
+        ["footnotes"] = true,
+        ["endnotes"] = true,
+        ["character list"] = true,
+        ["character profiles"] = true,
+        ["cast of characters"] = true,
+        ["map"] = true,
+        ["maps"] = true,
+        ["illustrations"] = true,
+        ["color illustrations"] = true,
+        ["afterword"] = true,
+    }
+
+    local title = toc_entry.title:lower():gsub("^%s+", ""):gsub("%s+$", "")
+
+    if NON_CHAPTER_TITLES[title] then
+        return false
+    end
+
+    return true
+end
+
+function Kanisync:handleChapterChange(toc_entry)
+    if not isChapterTocEntry(toc_entry) then
+        return
+    end
+
+    local anilist_data = self:getBookAniListData()
+    if not anilist_data then
+        return
+    end
+
+    self.kanisync_ui:progressUpdatePrompt(
+        anilist_data,
+        "chapter"
+    )
+end
+
+function Kanisync:handleLocationChange(location)
+    if not self.ui.toc or not location then
+        return
+    end
+
+    local current_entry, current_index = self:getTocEntry(location)
+    if not current_entry then
+        return
+    end
+
+    local previous_index = self.current_toc_index
+
+    if not previous_index or previous_index == current_index then
+        return
+    end
+
+    if current_index > previous_index then
+        self:handleChapterChange(current_entry)
+    end
+end
+
+function Kanisync:onPageUpdate(pageno)
+    self:handleLocationChange(pageno)
+end
+
+function Kanisync:onPosUpdate(_, pageno)
+    --[[
+    XPointer is more accurate for reflowable documents because multiple
+    TOC entries can appear on the same rendered page.
+    ]]
+    local xpointer = self.ui.document:getXPointer()
+    self:handleLocationChange(xpointer or pageno)
+end
+
+function Kanisync:onTocReset()
+    self.current_toc_index = nil
+
+    --[[
+    Using `UIManager:nextTick()` ensures KOReader has finished
+    rebuilding the TOC before we queries it
+    ]]
+    UIManager:nextTick(function()
+        self:initializeCurrentTocEntry()
+    end)
 end
 
 return Kanisync

@@ -602,40 +602,91 @@ function KanisyncUI:about()
     }))
 end
 
-function KanisyncUI:progressUpdatePrompt(anilist_data)
+---@param anilist_data table
+---@param progress_scope
+---| "both"
+---| "chapter"
+---| "volume"
+function KanisyncUI:progressUpdatePrompt(anilist_data, progress_scope)
     local user_list_entry = anilist_data.user_list_entry
 
-    UIManager:show(DoubleSpinWidget:new {
-        title_text = T(_("Linked to %1. Update progress?"), anilist_data.title),
+    local function updateProgress(values)
+        NetworkMgr:runWhenOnline(function()
+            local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
+                values)
+            if error or not result then
+                self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                return
+            end
+            self.plugin:saveBookUserMetadata(result)
+        end)
+    end
 
-        left_text = _("Chapter progress"),
-        left_value = user_list_entry.progress,
-        left_min = 0,
-        left_max = anilist_data.chapters or math.huge,
-        left_step = 1,
-        left_hold_step = 10,
+    local widget
+    if progress_scope == "both" then
+        widget = DoubleSpinWidget:new {
+            title_text = T(_("Linked to %1. Update progress?"), anilist_data.title),
 
-        right_text = _("Volume progress"),
-        right_value = user_list_entry.progress_volumes,
-        right_min = 0,
-        right_max = anilist_data.volumes or math.huge,
-        right_step = 1,
-        right_hold_step = 10,
+            left_text = _("Chapter progress"),
+            left_value = user_list_entry.progress,
+            left_min = 0,
+            left_max = anilist_data.chapters or math.huge,
+            left_step = 1,
+            left_hold_step = 10,
 
-        ok_text = _("Set"),
+            right_text = _("Volume progress"),
+            right_value = user_list_entry.progress_volumes,
+            right_min = 0,
+            right_max = anilist_data.volumes or math.huge,
+            right_step = 1,
+            right_hold_step = 10,
 
-        callback = function(chapter_progress, volume_progress)
-            NetworkMgr:runWhenOnline(function()
-                local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
-                    { progress = chapter_progress, progressVolumes = volume_progress })
-                if error or not result then
-                    self.ephemeralMessage(error or _("AniList returned an invalid response"))
-                    return
-                end
-                self.plugin:saveBookUserMetadata(result)
-            end)
-        end
-    })
+            ok_text = _("Set"),
+
+            callback = function(chapter_progress, volume_progress)
+                updateProgress({ progress = chapter_progress, progressVolumes = volume_progress })
+            end
+        }
+    elseif progress_scope == "chapter" then
+        widget = SpinWidget:new {
+            title_text = _("Update chapter progress"),
+
+            value = user_list_entry.progress,
+            value_min = 0,
+            value_max = anilist_data.chapters or math.huge,
+            value_step = 1,
+            value_hold_step = 10,
+            precision = "%d",
+            unit = _("chapters"),
+
+            ok_text = _("Update"),
+
+            callback = function(spin)
+                updateProgress({ progress = spin.value })
+            end,
+        }
+    elseif progress_scope == "volume" then
+        widget = SpinWidget:new {
+            title_text = _("Update volume progress"),
+
+            value = user_list_entry.progress_volumes,
+            value_min = 0,
+            value_max = anilist_data.volumes or math.huge,
+            value_step = 1,
+            value_hold_step = 10,
+            precision = "%d",
+            unit = _("volumes"),
+
+            ok_text = _("Update"),
+
+            callback = function(spin)
+                updateProgress({ progressVolumes = spin.value })
+            end,
+        }
+    end
+    if widget then
+        UIManager:show(widget)
+    end
 end
 
 local function getMediaTitle(media)
