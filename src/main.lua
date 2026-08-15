@@ -311,6 +311,7 @@ end
 
 function Kanisync:onReaderReady()
     self:initializeCurrentTocEntry()
+    self.end_of_book_handled = false
 
     local document = self.ui.document
     local file = document and ffiUtil.realpath(document.file)
@@ -453,6 +454,20 @@ function Kanisync:onTocReset()
     UIManager:nextTick(function()
         self:initializeCurrentTocEntry()
     end)
+end
+
+function Kanisync:onEndOfBook()
+    if self.end_of_book_handled then
+        return
+    end
+
+    self.end_of_book_handled = true
+
+    local anilist_data = self:getBookAniListData()
+    if not anilist_data then
+        return
+    end
+    self.kanisync_ui:progressUpdatePrompt(anilist_data, "both")
 end
 
 return Kanisync
