@@ -7,6 +7,7 @@ local InfoMessage = require("ui/widget/infomessage")
 local InputDialog = require("ui/widget/inputdialog")
 local PathChooser = require("ui/widget/pathchooser")
 local SpinWidget = require("ui/widget/spinwidget")
+local DoubleSpinWidget = require("ui/widget/doublespinwidget")
 local Menu = require("ui/widget/menu")
 local MultiConfirmBox = require("ui/widget/multiconfirmbox")
 local NetworkMgr = require("ui/network/manager")
@@ -488,36 +489,48 @@ end
 function KanisyncUI:progressUpdatePrompt(anilist_data)
     local user_list_entry = anilist_data.user_list_entry
 
-    local next_chapter = user_list_entry.progress + 1
-    local next_volume = user_list_entry.progress_volumes + 1
-    UIManager:show(MultiConfirmBox:new {
-        text = T(_("Linked to %1. Update progress?"), anilist_data.title),
-        choice1_text = T(_("Set chapter to %1"), next_chapter),
-        choice1_enabled = next_chapter <= (anilist_data.chapters or math.huge),
-        choice1_callback = function()
-            NetworkMgr:runWhenOnline(function()
-                local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
-                    { progress = user_list_entry.progress + 1 })
-                if error or not result then
-                    self.ephemeralMessage(error or _("AniList returned an invalid response"))
-                    return
-                end
-                self.plugin:updateCurrentBookUserMetadata("progress", result.progress)
-            end)
-        end,
-        choice2_text = T(_("Set volume to %1"), next_volume),
-        choice2_enabled = next_volume <= (anilist_data.volumes or math.huge),
-        choice2_callback = function()
-            NetworkMgr:runWhenOnline(function()
-                local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
-                    { progressVolumes = user_list_entry.progress_volumes + 1 })
-                if error or not result then
-                    self.ephemeralMessage(error or _("AniList returned an invalid response"))
-                    return
-                end
-                self.plugin:updateCurrentBookUserMetadata("progress_volumes", result.progressVolumes)
-            end)
-        end,
+    UIManager:show(DoubleSpinWidget:new {
+        title_text = T(_("Linked to %1. Update progress?"), anilist_data.title),
+
+        left_text = _("Chapter progress"),
+        left_value = user_list_entry.progress,
+        left_min = 0,
+        left_max = anilist_data.chapters or math.huge,
+        left_step = 1,
+        left_hold_step = 10,
+        
+        right_text = _("Volume progress"),
+        right_value = user_list_entry.progress_volumes,
+        right_min = 0,
+        right_max = anilist_data.volumes or math.huge,
+        right_step = 1,
+        right_hold_step = 10,
+        
+        ok_text = _("Set")
+        
+        callback = function(chapter_progress, volume_progress)
+            if chapter_progress ~= user_list_entry.progress then
+                NetworkMgr:runWhenOnline(function()
+                    local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id, { progress = chapter_progress })
+                    if error or not result then
+                        self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                        return
+                    end
+                    self.plugin:updateCurrentBookUserMetadata("progress", result.progress)
+                end)
+            end
+            
+            if volume_progress ~= user_list_entry.progress_volumes then
+                NetworkMgr:runWhenOnline(function()
+                    local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id, { progressVolumes = volume_progress })
+                    if error or not result then
+                        self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                        return
+                    end
+                    self.plugin:updateCurrentBookUserMetadata("progress_volumes", result.progressVolumes)
+                end)
+            end
+        end
     })
 end
 
