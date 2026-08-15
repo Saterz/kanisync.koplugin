@@ -420,7 +420,7 @@ function Kanisync:handleLocationChange(location)
     end
 
     local previous_index = self.current_toc_index
-
+    self.current_toc_index = current_index
     if not previous_index or previous_index == current_index then
         return
     end
