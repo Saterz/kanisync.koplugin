@@ -282,6 +282,7 @@ function KanisyncUI:manageEntry(anilist_data)
             text = _("Unlink book"),
             callback = function()
                 self.plugin:unlinkBook()
+                self.ephemeralMessage("Book unlinked")
             end
         },
     }
