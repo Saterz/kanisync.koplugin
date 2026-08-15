@@ -207,16 +207,6 @@ function Kanisync:saveBookAniListData(media)
     return saved_setting
 end
 
----@param key string
----@param value any
-function Kanisync:updateCurrentBookAniListData(key, value)
-    local anilist_data = self.ui.doc_settings:readSetting("kanisync")
-    anilist_data[key] = value
-
-    self.ui.doc_settings:saveSetting("kanisync", anilist_data)
-    self.ui.doc_settings:flush()
-end
-
 ---Updates the user metadata of the current book.
 ---@param user_metadata table
 function Kanisync:saveBookUserMetadata(user_metadata)
