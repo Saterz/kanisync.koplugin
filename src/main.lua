@@ -374,6 +374,10 @@ function Kanisync:onReaderReady()
 end
 
 local function isChapterTocEntry(toc_entry)
+    if type(toc_entry) ~= "table" or type(toc_entry.title) ~= "string" then
+        return false
+    end
+
     local NON_CHAPTER_TITLES = {
         ["cover"] = true,
         ["front cover"] = true,
@@ -427,7 +431,7 @@ local function isChapterTocEntry(toc_entry)
 end
 
 function Kanisync:handleChapterChange(toc_entry)
-    if not isChapterTocEntry(toc_entry) then
+    if not self:hasToken() or not isChapterTocEntry(toc_entry) then
         return
     end
 
@@ -481,7 +485,7 @@ function Kanisync:onTocReset()
 
     --[[
     Using `UIManager:nextTick()` ensures KOReader has finished
-    rebuilding the TOC before we queries it
+    rebuilding the TOC before we query it.
     ]]
     UIManager:nextTick(function()
         self:initializeCurrentTocEntry()
@@ -489,7 +493,7 @@ function Kanisync:onTocReset()
 end
 
 function Kanisync:onEndOfBook()
-    if self.end_of_book_handled then
+    if self.end_of_book_handled or not self:hasToken() then
         return
     end
 
