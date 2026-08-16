@@ -8,4 +8,6 @@
 ---| "PAUSED" Paused watching/reading
 ---| "REPEATING" Re-watching/reading
 
----@alias KanisyncEntry { id: number, title: string?, user_list_entry: { id: number?, status: ReadingStatus, score: number?, progress: number?, progress_volumes: number?, notes: string? }, fetched_at: number }
+---@alias AniListFuzzyDate { year?: integer, month?: integer, day?: integer }
+
+---@alias KanisyncEntry { id: number, title: string?, format: string?, chapters: integer?, volumes: integer?, start_date: AniListFuzzyDate?, user_list_entry: { id: number?, status: ReadingStatus?, score: number?, progress: integer, progress_volumes: integer, notes: string?, started_at: AniListFuzzyDate?, completed_at: AniListFuzzyDate? } }
