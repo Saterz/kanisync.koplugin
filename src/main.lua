@@ -70,6 +70,13 @@ local Kanisync = WidgetContainer:extend {
 function Kanisync:init()
     -- self:onDispatcherRegisterActions()
     self.ui.menu:registerToMainMenu(self)
+
+    -- ReaderUI registers built-in modules and plugins before running post-init
+    -- callbacks. Wait until then so both Kanisync and ReaderStatus are present
+    -- in ReaderUI's event-handler list.
+    self.ui:registerPostInitCallback(function()
+        self:prioritizeEndOfBookHandler()
+    end)
     self.settings = LuaSettings:open(SETTINGS_FILE)
 
     local token = self.settings:readSetting("anilist_token")
@@ -125,6 +132,31 @@ function Kanisync:getAutoLinkFolders()
     end
 
     return {}
+end
+
+-- ReaderUI dispatches events to its modules in array order. Place Kanisync
+-- immediately before ReaderStatus so we can prompt before an end action closes
+-- the current document. `onEndOfBook` resumes ReaderStatus after the prompt.
+function Kanisync:prioritizeEndOfBookHandler()
+    local status_index
+    local plugin_index
+    for module_index, module in ipairs(self.ui) do
+        if module == self.ui.status then
+            status_index = module_index
+        elseif module == self then
+            plugin_index = module_index
+        end
+    end
+
+    if not status_index or not plugin_index or plugin_index < status_index then
+        return
+    end
+
+    -- KOReader's status module may leave the document on EndOfBook. Removing
+    -- Kanisync does not change status_index because plugins are registered
+    -- after ReaderStatus, so inserting at that index places us directly before it.
+    table.remove(self.ui, plugin_index)
+    table.insert(self.ui, status_index, self)
 end
 
 ---@return KanisyncEntry?
@@ -461,13 +493,22 @@ function Kanisync:onEndOfBook()
         return
     end
 
-    self.end_of_book_handled = true
-
     local anilist_data = self:getBookAniListData()
     if not anilist_data then
         return
     end
-    self.kanisync_ui:progressUpdatePrompt(anilist_data, "both")
+
+    NetworkMgr:runWhenOnline(function()
+        self.end_of_book_handled = true
+        self.kanisync_ui:progressUpdatePrompt(anilist_data, "both", function()
+            if self.ui.status then
+                self.ui.status:onEndOfBook()
+            end
+        end)
+    end)
+
+    -- Defer KOReader's configured end-of-document action until the prompt closes.
+    return true
 end
 
 return Kanisync

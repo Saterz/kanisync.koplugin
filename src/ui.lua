@@ -607,7 +607,8 @@ end
 ---| "both"
 ---| "chapter"
 ---| "volume"
-function KanisyncUI:progressUpdatePrompt(anilist_data, progress_scope)
+---@param close_callback? function
+function KanisyncUI:progressUpdatePrompt(anilist_data, progress_scope, close_callback)
     local user_list_entry = anilist_data.user_list_entry
 
     local function updateProgress(values)
@@ -645,7 +646,8 @@ function KanisyncUI:progressUpdatePrompt(anilist_data, progress_scope)
 
             callback = function(chapter_progress, volume_progress)
                 updateProgress({ progress = chapter_progress, progressVolumes = volume_progress })
-            end
+            end,
+            close_callback = close_callback,
         }
     elseif progress_scope == "chapter" then
         widget = SpinWidget:new {
@@ -664,6 +666,7 @@ function KanisyncUI:progressUpdatePrompt(anilist_data, progress_scope)
             callback = function(spin)
                 updateProgress({ progress = spin.value })
             end,
+            close_callback = close_callback,
         }
     elseif progress_scope == "volume" then
         widget = SpinWidget:new {
@@ -682,6 +685,7 @@ function KanisyncUI:progressUpdatePrompt(anilist_data, progress_scope)
             callback = function(spin)
                 updateProgress({ progressVolumes = spin.value })
             end,
+            close_callback = close_callback,
         }
     end
     if widget then
