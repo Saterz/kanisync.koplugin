@@ -853,7 +853,7 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
                 and type(media.coverImage.medium) == "string"
                 and media.coverImage.medium
             if cover_url then
-                media._cover_data = cover_loader(cover_url)
+                media._cover_data = media._cover_data or cover_loader(cover_url)
                 local cover = renderCover(media._cover_data, thumbnail_width, thumbnail_height)
                 if cover then
                     table.insert(thumbnail_buffers, cover)
