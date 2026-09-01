@@ -224,11 +224,11 @@ end
 
 function Kanisync:setAniListAPIKey(token)
     token = trim(token)
-  
+
     local anilist_token_file = assert(io.open(ANILIST_TOKEN_PATH, "wb"))
     anilist_token_file:write(token)
     anilist_token_file:close()
-  
+
     self.token = token
     self.api.token = token
     self.user = {}
