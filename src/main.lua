@@ -599,4 +599,11 @@ function Kanisync:onEndOfBook()
     return true
 end
 
+function Kanisync.deletePluginSettings()
+    if lfs.attributes(SETTINGS_DIR, "mode") ~= "directory" then
+        return true
+    end
+    return ffiUtil.purgeDir(SETTINGS_DIR)
+end
+
 return Kanisync
