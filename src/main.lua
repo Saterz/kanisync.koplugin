@@ -12,13 +12,17 @@ local logger = require("logger")
 local LuaSettings = require("luasettings")
 local NetworkMgr = require("ui/network/manager")
 local ffiUtil = require("ffi/util")
+local lfs = require("libs/libkoreader-lfs")
 -- local T = ffiUtil.template
 local _ = require("gettext")
 
 local KanisyncUI = require("ui")
 local KanisyncApi = require("api")
 
-local SETTINGS_FILE = DataStorage:getSettingsDir() .. "/kanisync_settings.lua"
+local LEGACY_SETTINGS_FILE = DataStorage:getSettingsDir() .. "/kanisync_settings.lua"
+local SETTINGS_DIR = DataStorage:getSettingsDir() .. "/Kanisync"
+local SETTINGS_FILE = SETTINGS_DIR .. "/settings.lua"
+local ANILIST_API_KEY_FILE = SETTINGS_DIR .. "/anilist_api.key"
 
 local SCORE_FORMATS = {
     POINT_100 = {
@@ -67,6 +71,44 @@ local Kanisync = WidgetContainer:extend {
 --     Dispatcher:registerAction()
 --
 
+function Kanisync.migrateSettings()
+    local settings_file = io.open(SETTINGS_FILE, "rb")
+
+    if settings_file then
+        settings_file:close()
+    else
+        local legacy_settings_file = io.open(LEGACY_SETTINGS_FILE, "rb")
+
+        if legacy_settings_file then
+            local content = legacy_settings_file:read("*a")
+            legacy_settings_file:close()
+
+            local new_settings_file = assert(io.open(SETTINGS_FILE, "wb"))
+            new_settings_file:write(content)
+            new_settings_file:close()
+
+            local success, err = os.remove(LEGACY_SETTINGS_FILE)
+            if not success then
+                logger.warn("Kanisync | Could not delete legacy settings file during migration" .. tostring(err))
+            end
+        end
+    end
+
+    local anilist_api_key_file = io.open(ANILIST_API_KEY_FILE, "rb")
+    if anilist_api_key_file then
+        anilist_api_key_file:close()
+    else
+        local settings = LuaSettings:open(SETTINGS_FILE)
+        local anilist_api_key = settings:readSetting("anilist_token")
+        if anilist_api_key then
+          local new_anilist_api_key_file = assert(io.open(ANILIST_API_KEY_FILE, "wb"))
+          new_anilist_api_key_file:write(anilist_api_key)
+          new_anilist_api_key_file:close()
+          settings:delSetting("anilist_token"):flush()
+        end
+    end
+end
+
 function Kanisync:init()
     -- self:onDispatcherRegisterActions()
     self.ui.menu:registerToMainMenu(self)
@@ -77,13 +119,27 @@ function Kanisync:init()
     self.ui:registerPostInitCallback(function()
         self:prioritizeEndOfBookHandler()
     end)
+
+    if lfs.attributes(SETTINGS_DIR, "mode") ~= "directory" then
+      assert(lfs.mkdir(SETTINGS_DIR))
+    end
+    self.migrateSettings()
     self.settings = LuaSettings:open(SETTINGS_FILE)
 
-    local token = self.settings:readSetting("anilist_token")
-    if type(token) == "string" and token ~= "" then
-        self.token = token
-    else
-        logger.warn("Kanisync | No token found in kanisync_settings.lua")
+    local anilist_api_key_file = io.open(ANILIST_API_KEY_FILE, "r")
+    if anilist_api_key_file then
+        local token = anilist_api_key_file:read("*a")
+        anilist_api_key_file:close()
+
+        if token then
+            token = token:match("^%s*(.-)%s*$")
+        end
+
+        if token and token ~= "" then
+            self.token = token
+        else
+            logger.warn("Kanisync | No token found in anilist_api.key")
+        end
     end
 
     self.kanisync_ui = KanisyncUI:new(self)
