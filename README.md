@@ -38,16 +38,9 @@ ZenPM is a package manager for KOReader plugins. It is the recommended way to in
 
 ### Configuration
 
-1. Get your access token from [this link](https://anilist.co/api/v2/oauth/authorize?client_id=40345&response_type=token)
-2. On a computer, create `settings/kanisync_settings.lua` in the KOReader installation directory with the following content:
-
-   ```lua
-   return {
-       anilist_token = "your access token",
-   }
-   ```
-
-3. Replace `your access token` with the token from the redirect URL, then safely eject the device.
+1. Get your access token from [this link](https://anilist.co/api/v2/oauth/authorize?client_id=40345&response_type=token).
+2. On a computer, create `settings/Kanisync/anilist_token.key` in the KOReader installation directory if it does not already exist.
+3. Add your AniList access token from the redirect URL to `anilist_token.key` as plain text and safely eject your device.
 4. Start using the plugin!
 
 ## Usage
@@ -64,10 +57,6 @@ Don't forget to give the project a star! Thanks again!
 3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
-
-### Top contributors
-
-[![Contributors](https://contrib.rocks/image?repo=Saterz/kanisync.koplugin)][contributors-url]
 
 ## License
 
