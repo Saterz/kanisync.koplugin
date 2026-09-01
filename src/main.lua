@@ -12,13 +12,17 @@ local logger = require("logger")
 local LuaSettings = require("luasettings")
 local NetworkMgr = require("ui/network/manager")
 local ffiUtil = require("ffi/util")
+local lfs = require("libs/libkoreader-lfs")
 -- local T = ffiUtil.template
 local _ = require("gettext")
 
 local KanisyncUI = require("ui")
 local KanisyncApi = require("api")
 
-local SETTINGS_FILE = DataStorage:getSettingsDir() .. "/kanisync_settings.lua"
+local LEGACY_SETTINGS_PATH = DataStorage:getSettingsDir() .. "/kanisync_settings.lua"
+local SETTINGS_DIR = DataStorage:getSettingsDir() .. "/Kanisync"
+local SETTINGS_PATH = SETTINGS_DIR .. "/settings.lua"
+local ANILIST_TOKEN_PATH = SETTINGS_DIR .. "/anilist_token.key"
 
 local SCORE_FORMATS = {
     POINT_100 = {
@@ -53,6 +57,10 @@ local SCORE_FORMATS = {
     },
 }
 
+local function trim(value)
+    return value:match("^%s*(.-)%s*$")
+end
+
 ---@class Kanisync
 ---@field ui table KOReader UI instance injected by PluginLoader
 ---@field fullname string
@@ -67,6 +75,44 @@ local Kanisync = WidgetContainer:extend {
 --     Dispatcher:registerAction()
 --
 
+function Kanisync.migrateSettings()
+    local settings_file = io.open(SETTINGS_PATH, "rb")
+
+    if settings_file then
+        settings_file:close()
+    else
+        local legacy_settings_file = io.open(LEGACY_SETTINGS_PATH, "rb")
+
+        if legacy_settings_file then
+            local content = legacy_settings_file:read("*a")
+            legacy_settings_file:close()
+
+            local new_settings_file = assert(io.open(SETTINGS_PATH, "wb"))
+            new_settings_file:write(content)
+            new_settings_file:close()
+
+            local success, err = os.remove(LEGACY_SETTINGS_PATH)
+            if not success then
+                logger.warn("Kanisync | Could not delete legacy settings file during migration" .. tostring(err))
+            end
+        end
+    end
+
+    local anilist_token_file = io.open(ANILIST_TOKEN_PATH, "rb")
+    if anilist_token_file then
+        anilist_token_file:close()
+    else
+        local settings = LuaSettings:open(SETTINGS_PATH)
+        local anilist_api_key = settings:readSetting("anilist_token")
+        if anilist_api_key then
+          local new_anilist_token_file = assert(io.open(ANILIST_TOKEN_PATH, "wb"))
+          new_anilist_token_file:write(anilist_api_key)
+          new_anilist_token_file:close()
+          settings:delSetting("anilist_token"):flush()
+        end
+    end
+end
+
 function Kanisync:init()
     -- self:onDispatcherRegisterActions()
     self.ui.menu:registerToMainMenu(self)
@@ -77,13 +123,30 @@ function Kanisync:init()
     self.ui:registerPostInitCallback(function()
         self:prioritizeEndOfBookHandler()
     end)
-    self.settings = LuaSettings:open(SETTINGS_FILE)
 
-    local token = self.settings:readSetting("anilist_token")
-    if type(token) == "string" and token ~= "" then
-        self.token = token
+    if lfs.attributes(SETTINGS_DIR, "mode") ~= "directory" then
+      assert(lfs.mkdir(SETTINGS_DIR))
+    end
+    self.migrateSettings()
+    self.settings = LuaSettings:open(SETTINGS_PATH)
+
+    local anilist_token_file = io.open(ANILIST_TOKEN_PATH, "r")
+    if anilist_token_file then
+        local token = anilist_token_file:read("*a")
+        anilist_token_file:close()
+
+        if token then
+            token = trim(token)
+        end
+
+        if token and token ~= "" then
+            self.token = token
+        else
+            logger.warn("Kanisync | No token found in anilist_token.key")
+        end
     else
-        logger.warn("Kanisync | No token found in kanisync_settings.lua")
+      anilist_token_file = assert(io.open(ANILIST_TOKEN_PATH, "wb"))
+      anilist_token_file:close()
     end
 
     self.kanisync_ui = KanisyncUI:new(self)
@@ -157,6 +220,27 @@ function Kanisync:prioritizeEndOfBookHandler()
     -- after ReaderStatus, so inserting at that index places us directly before it.
     table.remove(self.ui, plugin_index)
     table.insert(self.ui, status_index, self)
+end
+
+function Kanisync:setAniListAPIKey(token)
+    token = trim(token)
+  
+    local anilist_token_file = assert(io.open(ANILIST_TOKEN_PATH, "wb"))
+    anilist_token_file:write(token)
+    anilist_token_file:close()
+  
+    self.token = token
+    self.api.token = token
+    self.user = {}
+    if self.token ~= "" then
+        NetworkMgr:runWhenOnline(function()
+            local user, error = self.api:getUser()
+            if error then
+                logger.err("Kanisync | An error occurred while fetching user: ", error)
+            end
+            self.user = user or {}
+        end)
+    end
 end
 
 ---@return KanisyncEntry?

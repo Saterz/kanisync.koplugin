@@ -11,6 +11,7 @@ local DoubleSpinWidget = require("ui/widget/doublespinwidget")
 local Menu = require("ui/widget/menu")
 local NetworkMgr = require("ui/network/manager")
 local RenderImage = require("ui/renderimage")
+local QRMessage = require("ui/widget/qrmessage")
 local Device = require("device")
 local Screen = Device.screen
 local Size = require("ui/size")
@@ -65,15 +66,15 @@ function KanisyncUI:main_menu(anilist_data, username)
         table.insert(menu, {
             text = "Token not found",
             callback = function()
-                UIManager:show(InfoMessage:new {
-                    text = _("No AniList token is configured.\n\nOn a computer, create settings/kanisync_settings.lua in the KOReader installation directory and add your anilist_token.\n\nRestart KOReader after saving the file. See the Kanisync README for details."),
-                })
-            end
+                self:updateTokenDialog()
+            end,
         })
     else
         table.insert(menu, {
             text = T(_("Connected as %1"), username),
-            enabled = false,
+            callback = function()
+                self:updateTokenDialog()
+            end,
         })
         if anilist_data ~= nil then
             table.insert(menu, {
@@ -106,6 +107,48 @@ function KanisyncUI:main_menu(anilist_data, username)
     })
 
     return menu
+end
+
+function KanisyncUI:updateTokenDialog()
+    local input
+    input = InputDialog:new({
+        title = _("Update AniList token"),
+        input = "",
+        input_hint = _("Leave blank to delete"),
+        description = _("Get your AniList token from the link in the QR code."),
+        buttons = {
+            {
+              {
+                    text = _("Cancel"),
+                    id = "close",
+                    callback = function()
+                        UIManager:close(input)
+                    end,
+              },
+              {
+                    text = _("Show QR Code"),
+                    callback = function()
+                        UIManager:show(QRMessage:new{
+                            text = "https://anilist.co/api/v2/oauth/authorize?client_id=40345&response_type=token",
+                            width = Device.screen:getWidth(),
+                            height = Device.screen:getHeight(),
+                        })
+                    end,
+              },
+              {
+                    text = _("Save"),
+                    is_enter_default = true,
+                    callback = function()
+                        local value = input:getInputText()
+                        self.plugin:setAniListAPIKey(value)
+                        UIManager:close(input)
+                    end,
+              },
+            }
+        },
+    })
+    UIManager:show(input)
+    input:onShowKeyboard()
 end
 
 ---@param anilist_data KanisyncEntry
