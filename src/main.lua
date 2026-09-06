@@ -345,6 +345,23 @@ function Kanisync:linkBookToAniList(search_query)
     end
 
     local loading_widget = self.kanisync_ui.showMessage(_("Loading..."))
+
+    local function select_callback(media)
+        local anilist_data = self:saveBookAniListData(media)
+        self.kanisync_ui:progressUpdatePrompt(anilist_data, "both")
+    end
+
+    local function search_callback(refined_query)
+        self:linkBookToAniList(refined_query)
+    end
+
+    local function cover_loader(cover_url)
+        return self.api.downloadImage(cover_url)
+    end
+
+    local function on_loading_complete()
+        UIManager:close(loading_widget)
+    end
     UIManager:tickAfterNext(function()
         local media_list, error = self.api:searchMedia(search_query)
 
@@ -354,34 +371,23 @@ function Kanisync:linkBookToAniList(search_query)
             return
         end
 
+        if #media_list == 1 then
+            local media = media_list[1]
+            self.kanisync_ui:previewMedia(media, function()
+                self.kanisync_ui:mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader,
+                    on_loading_complete)
+            end, select_callback, cover_loader)
+            on_loading_complete()
+            return
+        end
+
         self.kanisync_ui:mediaChooser(
             media_list,
             search_query,
-            function(media)
-                --[[
-                We assume that if the media entry doesn't have a user status then the entry is not present in its library.
-                Updating its status will add it in its library.
-                ]]
-                -- if not media.mediaListEntry or not media.mediaListEntry.status then
-                --     local list_entry_id = media.mediaListEntry and media.mediaListEntry.id
-                --     local result, updateError = self.api:updateMediaList(list_entry_id, media.id, { status = "CURRENT" })
-                --     if updateError or not result then
-                --         return updateError or _("AniList returned an invalid response")
-                --     end
-                --     media.mediaListEntry = result
-                -- end
-                local anilist_data = self:saveBookAniListData(media)
-                self.kanisync_ui:progressUpdatePrompt(anilist_data, "both")
-            end,
-            function(refined_query)
-                self:linkBookToAniList(refined_query)
-            end,
-            function(cover_url)
-                return self.api.downloadImage(cover_url)
-            end,
-            function()
-                UIManager:close(loading_widget)
-            end
+            select_callback,
+            search_callback,
+            cover_loader,
+            on_loading_complete
         )
     end)
 end

@@ -866,7 +866,8 @@ end
 ---@param search_callback fun(search_query: string)
 ---@param cover_loader fun(url: string): string|nil
 ---@param on_loading_complete fun()
-function KanisyncUI:mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader, on_loading_complete)
+function KanisyncUI:mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader,
+                                 on_loading_complete)
     if #media_list == 0 then
         on_loading_complete()
         self.searchDialog(search_query, search_callback, true)
@@ -924,7 +925,8 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
                 callback = function()
                     UIManager:nextTick(function()
                         self:previewMedia(media, function()
-                            self:mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader, on_loading_complete)
+                            self:mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader,
+                                on_loading_complete)
                         end, select_callback, cover_loader)
                     end)
                 end,
