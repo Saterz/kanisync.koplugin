@@ -13,7 +13,7 @@ local LuaSettings = require("luasettings")
 local NetworkMgr = require("ui/network/manager")
 local ffiUtil = require("ffi/util")
 local lfs = require("libs/libkoreader-lfs")
--- local T = ffiUtil.template
+local T = ffiUtil.template
 local _ = require("gettext")
 
 local KanisyncUI = require("ui")
@@ -161,16 +161,7 @@ function Kanisync:init()
 
     self.api = KanisyncApi:new(self.token, filter_adult_content)
 
-    self.user = {}
-    if self.token then
-        NetworkMgr:runWhenOnline(function()
-            local user, error = self.api:getUser()
-            if error then
-                logger.err("Kanisync | An error occurred while fetching user: ", error)
-            end
-            self.user = user or {}
-        end)
-    end
+    self.user = self.settings:readSetting("anilist_user")
 end
 
 function Kanisync:addToMainMenu(menu_items)
@@ -178,7 +169,7 @@ function Kanisync:addToMainMenu(menu_items)
         text = _("Kanisync"),
         sorting_hint = "tools",
         sub_item_table_func = function()
-            return self.kanisync_ui:main_menu(self:getBookAniListData(), self.user.name)
+            return self.kanisync_ui:main_menu(self:getBookAniListData())
         end
     }
 end
@@ -235,16 +226,43 @@ function Kanisync:setAniListAPIKey(token)
 
     self.token = token
     self.api.token = token
-    self.user = {}
-    if self.token ~= "" then
-        NetworkMgr:runWhenOnline(function()
-            local user, error = self.api:getUser()
-            if error then
-                logger.err("Kanisync | An error occurred while fetching user: ", error)
-            end
-            self.user = user or {}
-        end)
+    self.user = nil
+    self.settings:delSetting("anilist_user"):flush()
+    if not self:hasToken() then
+        return
     end
+    local loading = self.kanisync_ui.showMessage(_("Verifying token..."))
+    UIManager:tickAfterNext(function()
+        self:refreshAniListUser(function()
+            UIManager:close(loading)
+        end)
+    end)
+end
+
+function Kanisync:refreshAniListUser(completion_callback)
+    if not self:hasToken() then
+        self.user = nil
+        self.settings:delSetting("anilist_user"):flush()
+        completion_callback()
+        self.kanisync_ui.ephemeralMessage(_("No AniList access token is configured."))
+        return
+    end
+
+    NetworkMgr:runWhenOnline(function()
+        local user, error = self.api:getUser()
+        if error then
+            logger.err("Kanisync | Could not retrieve AniList user: ", error)
+            completion_callback()
+            self.kanisync_ui.ephemeralMessage("Could not retrieve AniList user")
+            return
+        end
+        self.user = user
+        self.settings:saveSetting("anilist_user", user):flush()
+        completion_callback()
+        self.kanisync_ui.ephemeralMessage(
+            T(_("Connected as %1"), user.name)
+        )
+    end)
 end
 
 ---@return KanisyncEntry?

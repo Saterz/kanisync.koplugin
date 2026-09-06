@@ -57,49 +57,60 @@ function KanisyncUI:init(plugin)
 end
 
 ---@param anilist_data KanisyncEntry?
----@param username string
-function KanisyncUI:main_menu(anilist_data, username)
-    local is_token_provided = self.plugin:hasToken()
+function KanisyncUI:main_menu(anilist_data)
+    local user = self.plugin.user
 
     local menu = {}
-    if not is_token_provided then
+    if not self.plugin:hasToken() then
         table.insert(menu, {
-            text = "Token not found",
+            text = _("Token not found"),
             callback = function()
                 self:updateTokenDialog()
             end,
         })
     else
-        table.insert(menu, {
-            text = T(_("Connected as %1"), username),
-            callback = function()
-                self:updateTokenDialog()
-            end,
-        })
-        if self.plugin:isBookOpen() then
-            if anilist_data ~= nil then
-                table.insert(menu, {
-                    text = T(_('Linked to "%1"'), anilist_data.title),
-                    sub_item_table = self:manageEntry(anilist_data)
-                })
-            else
-                table.insert(menu, {
-                    text = _("Link book to AniList"),
-                    keep_menu_open = false,
-                    callback = function()
-                        NetworkMgr:runWhenOnline(function()
-                            self.plugin:linkBookToAniList()
-                        end)
-                    end,
-                })
+        if user then
+            table.insert(menu, {
+                text = T(_("Connected as %1"), user.name),
+                enabled = false,
+            })
+            if self.plugin:isBookOpen() then
+                if anilist_data ~= nil then
+                    table.insert(menu, {
+                        text = T(_('Linked to "%1"'), anilist_data.title),
+                        sub_item_table = self:manageEntry(anilist_data)
+                    })
+                else
+                    table.insert(menu, {
+                        text = _("Link book to AniList"),
+                        keep_menu_open = false,
+                        callback = function()
+                            NetworkMgr:runWhenOnline(function()
+                                self.plugin:linkBookToAniList()
+                            end)
+                        end,
+                    })
+                end
             end
+        else
+            table.insert(menu, {
+                text = _("Verify token"),
+                callback = function()
+                    local loading = self.showMessage(_("Verifying token..."))
+                    UIManager:tickAfterNext(function()
+                        self.plugin:refreshAniListUser(function()
+                            UIManager:close(loading)
+                        end)
+                    end)
+                end,
+            })
         end
-        table.insert(menu, {
-            text = _("Settings"),
-            sub_item_table = self:settingsMenu()
-        })
     end
 
+    table.insert(menu, {
+        text = _("Settings"),
+        sub_item_table = self:settingsMenu()
+    })
     table.insert(menu, {
         text = _("About"),
         keep_menu_open = true,
@@ -116,6 +127,7 @@ function KanisyncUI:updateTokenDialog()
     input = InputDialog:new({
         title = _("Update AniList token"),
         input = "",
+        text_type = "password",
         input_hint = _("Leave blank to delete"),
         description = _("Get your AniList token from the link in the QR code."),
         buttons = {
@@ -142,8 +154,8 @@ function KanisyncUI:updateTokenDialog()
                     is_enter_default = true,
                     callback = function()
                         local value = input:getInputText()
-                        self.plugin:setAniListAPIKey(value)
                         UIManager:close(input)
+                        self.plugin:setAniListAPIKey(value)
                     end,
                 },
             }
@@ -218,6 +230,7 @@ function KanisyncUI:manageEntry(anilist_data)
                                             return
                                         end
                                         self.plugin:saveBookUserMetadata(result)
+                                        self.ephemeralMessage(_("Updated personal note"))
                                     end)
                                 end,
                             },
@@ -318,7 +331,7 @@ function KanisyncUI:manageEntry(anilist_data)
             end
         },
         {
-            text = "Dates read",
+            text = _("Dates read"),
             sub_item_table = self:datesReadMenu(anilist_data)
         },
         {
@@ -631,6 +644,12 @@ end
 function KanisyncUI:settingsMenu()
     local menu = {}
 
+    table.insert(menu, {
+        text = _("Update AniList token"),
+        callback = function()
+            self:updateTokenDialog()
+        end
+    })
     table.insert(menu, {
         text = _("Auto-link folders"),
         sub_item_table = self:autoLinkFoldersMenu()
