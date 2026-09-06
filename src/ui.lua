@@ -348,8 +348,17 @@ function KanisyncUI:manageEntry(anilist_data)
         {
             text = _("Unlink book"),
             callback = function()
-                self.plugin:unlinkBook()
-                self.ephemeralMessage("Book unlinked")
+                UIManager:show(ConfirmBox:new {
+                    text = T(
+                        _(
+                            'Unlink "%1" from this book?\n\nThis only removes the local link. The entry and reading progress on AniList will not be deleted.'),
+                        anilist_data.title),
+                    ok_text = _("Unlink"),
+                    ok_callback = function()
+                        self.plugin:unlinkBook()
+                        self.ephemeralMessage(_("Book unlinked"))
+                    end,
+                })
             end
         },
     }
