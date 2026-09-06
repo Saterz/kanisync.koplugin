@@ -597,11 +597,6 @@ function KanisyncUI:autoLinkFoldersMenu()
         {
             text = _("Add auto-link folder"),
             keep_menu_open = true,
-            hold_callback = function()
-                UIManager:show(InfoMessage:new {
-                    text = _("Books opened from an auto-link folder or its subfolders will automatically be searched on AniList."),
-                })
-            end,
             callback = function(touchmenu_instance)
                 UIManager:show(PathChooser:new {
                     path = G_reader_settings:readSetting("home_dir") or Device.home_dir,
@@ -661,7 +656,9 @@ function KanisyncUI:settingsMenu()
     })
     table.insert(menu, {
         text = _("Auto-link folders"),
-        sub_item_table = self:autoLinkFoldersMenu()
+        sub_item_table = self:autoLinkFoldersMenu(),
+        help_text = _(
+            "Books opened from an auto-link folder or its subfolders will automatically be searched on AniList.")
     })
     table.insert(menu, {
         text = _("Preferences"),
