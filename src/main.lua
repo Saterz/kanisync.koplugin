@@ -68,7 +68,7 @@ end
 ---@field version string The plugin's version imported from the `_meta.lua` file
 local Kanisync = WidgetContainer:extend {
     name = "kanisync",
-    is_doc_only = true,
+    is_doc_only = false,
 }
 
 -- function Kanisync:onDispatcherRegisterActions()
@@ -188,6 +188,10 @@ function Kanisync:hasToken()
     return self.token ~= nil and self.token ~= ""
 end
 
+function Kanisync:isBookOpen()
+    return self.ui.document and true or false
+end
+
 function Kanisync:getAutoLinkFolders()
     local folders = self.settings:readSetting("auto_link_folders")
     if type(folders) == "table" then
@@ -245,7 +249,11 @@ end
 
 ---@return KanisyncEntry?
 function Kanisync:getBookAniListData()
-    return self.ui.doc_settings:readSetting("kanisync")
+    local anilist_data
+    if self:isBookOpen() then
+        anilist_data = self.ui.doc_settings:readSetting("kanisync")
+    end
+    return anilist_data
 end
 
 function Kanisync:saveBookAniListData(media)

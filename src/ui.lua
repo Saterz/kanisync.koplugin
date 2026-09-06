@@ -76,21 +76,23 @@ function KanisyncUI:main_menu(anilist_data, username)
                 self:updateTokenDialog()
             end,
         })
-        if anilist_data ~= nil then
-            table.insert(menu, {
-                text = T(_('Linked to "%1"'), anilist_data.title),
-                sub_item_table = self:manageEntry(anilist_data)
-            })
-        else
-            table.insert(menu, {
-                text = _("Link book to AniList"),
-                keep_menu_open = false,
-                callback = function()
-                    NetworkMgr:runWhenOnline(function()
-                        self.plugin:linkBookToAniList()
-                    end)
-                end,
-            })
+        if self.plugin:isBookOpen() then
+            if anilist_data ~= nil then
+                table.insert(menu, {
+                    text = T(_('Linked to "%1"'), anilist_data.title),
+                    sub_item_table = self:manageEntry(anilist_data)
+                })
+            else
+                table.insert(menu, {
+                    text = _("Link book to AniList"),
+                    keep_menu_open = false,
+                    callback = function()
+                        NetworkMgr:runWhenOnline(function()
+                            self.plugin:linkBookToAniList()
+                        end)
+                    end,
+                })
+            end
         end
         table.insert(menu, {
             text = _("Settings"),
