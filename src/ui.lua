@@ -865,14 +865,14 @@ end
 ---@param select_callback fun(media: table): string|nil
 ---@param search_callback fun(search_query: string)
 ---@param cover_loader fun(url: string): string|nil
-function KanisyncUI:mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader)
+---@param on_loading_complete fun()
+function KanisyncUI:mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader, on_loading_complete)
     if #media_list == 0 then
+        on_loading_complete()
         self.searchDialog(search_query, search_callback, true)
         return
     end
 
-    local loading = InfoMessage:new { text = _("Loading…") }
-    UIManager:show(loading)
     UIManager:nextTick(function()
         local thumbnail_width = Screen:scaleBySize(48)
         local thumbnail_height = Screen:scaleBySize(68)
@@ -924,7 +924,7 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
                 callback = function()
                     UIManager:nextTick(function()
                         self:previewMedia(media, function()
-                            self:mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader)
+                            self:mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader, on_loading_complete)
                         end, select_callback, cover_loader)
                     end)
                 end,
@@ -946,7 +946,7 @@ function KanisyncUI:mediaChooser(media_list, search_query, select_callback, sear
                 thumbnail_buffers = {}
             end,
         }
-        UIManager:close(loading)
+        on_loading_complete()
         UIManager:show(chooser)
     end)
 end
@@ -960,6 +960,13 @@ function KanisyncUI.ephemeralMessage(message, dialog)
         text = _(message),
         timeout = 3,
     })
+end
+
+---@param message string
+function KanisyncUI.showMessage(message)
+    local info_message_widget = InfoMessage:new({ text = message })
+    UIManager:show(info_message_widget)
+    return info_message_widget
 end
 
 return KanisyncUI
