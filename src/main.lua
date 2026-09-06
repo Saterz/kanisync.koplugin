@@ -105,10 +105,10 @@ function Kanisync.migrateSettings()
         local settings = LuaSettings:open(SETTINGS_PATH)
         local anilist_api_key = settings:readSetting("anilist_token")
         if anilist_api_key then
-          local new_anilist_token_file = assert(io.open(ANILIST_TOKEN_PATH, "wb"))
-          new_anilist_token_file:write(anilist_api_key)
-          new_anilist_token_file:close()
-          settings:delSetting("anilist_token"):flush()
+            local new_anilist_token_file = assert(io.open(ANILIST_TOKEN_PATH, "wb"))
+            new_anilist_token_file:write(anilist_api_key)
+            new_anilist_token_file:close()
+            settings:delSetting("anilist_token"):flush()
         end
     end
 end
@@ -125,7 +125,7 @@ function Kanisync:init()
     end)
 
     if lfs.attributes(SETTINGS_DIR, "mode") ~= "directory" then
-      assert(lfs.mkdir(SETTINGS_DIR))
+        assert(lfs.mkdir(SETTINGS_DIR))
     end
     self.migrateSettings()
     self.settings = LuaSettings:open(SETTINGS_PATH)
@@ -145,8 +145,8 @@ function Kanisync:init()
             logger.warn("Kanisync | No token found in anilist_token.key")
         end
     else
-      anilist_token_file = assert(io.open(ANILIST_TOKEN_PATH, "wb"))
-      anilist_token_file:close()
+        anilist_token_file = assert(io.open(ANILIST_TOKEN_PATH, "wb"))
+        anilist_token_file:close()
     end
 
     self.kanisync_ui = KanisyncUI:new(self)

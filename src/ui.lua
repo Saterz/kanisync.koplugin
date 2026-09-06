@@ -118,24 +118,24 @@ function KanisyncUI:updateTokenDialog()
         description = _("Get your AniList token from the link in the QR code."),
         buttons = {
             {
-              {
+                {
                     text = _("Cancel"),
                     id = "close",
                     callback = function()
                         UIManager:close(input)
                     end,
-              },
-              {
+                },
+                {
                     text = _("Show QR Code"),
                     callback = function()
-                        UIManager:show(QRMessage:new{
+                        UIManager:show(QRMessage:new {
                             text = "https://anilist.co/api/v2/oauth/authorize?client_id=40345&response_type=token",
                             width = Device.screen:getWidth(),
                             height = Device.screen:getHeight(),
                         })
                     end,
-              },
-              {
+                },
+                {
                     text = _("Save"),
                     is_enter_default = true,
                     callback = function()
@@ -143,7 +143,7 @@ function KanisyncUI:updateTokenDialog()
                         self.plugin:setAniListAPIKey(value)
                         UIManager:close(input)
                     end,
-              },
+                },
             }
         },
     })
