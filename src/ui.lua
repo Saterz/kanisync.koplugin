@@ -324,7 +324,9 @@ function KanisyncUI:manageEntry(anilist_data)
             keep_menu_open = false,
             callback = function()
                 NetworkMgr:runWhenOnline(function()
-                    self.plugin:linkBookToAniList()
+                    self.searchDialog("", function(query)
+                        self.plugin:linkBookToAniList(query)
+                    end)
                 end)
             end,
         },
