@@ -16,7 +16,7 @@ local lfs = require("libs/libkoreader-lfs")
 local T = ffiUtil.template
 local _ = require("gettext")
 
-local KanisyncUI = require("ui")
+local KanisyncUI = require("ui/init")
 local KanisyncApi = require("api")
 
 local LEGACY_SETTINGS_PATH = DataStorage:getSettingsDir() .. "/kanisync_settings.lua"
