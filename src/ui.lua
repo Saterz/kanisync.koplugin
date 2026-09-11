@@ -183,9 +183,9 @@ function KanisyncUI:manageEntry(anilist_data)
                         return
                     end
 
-                    self.ephemeralMessage(_("Changes pulled from AniList."))
-
                     self.plugin:saveBookAniListData(media)
+
+                    self.ephemeralMessage(_("Changes pulled from AniList."))
                 end)
             end
         },
