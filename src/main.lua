@@ -217,7 +217,7 @@ function Kanisync:prioritizeEndOfBookHandler()
     table.insert(self.ui, status_index, self)
 end
 
-function Kanisync:setAniListAPIKey(token)
+function Kanisync:setAniListToken(token)
     token = trim(token)
 
     local anilist_token_file = assert(io.open(ANILIST_TOKEN_PATH, "wb"))

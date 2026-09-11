@@ -155,7 +155,7 @@ function KanisyncUI:updateTokenDialog()
                     callback = function()
                         local value = input:getInputText()
                         UIManager:close(input)
-                        self.plugin:setAniListAPIKey(value)
+                        self.plugin:setAniListToken(value)
                     end,
                 },
             }
