@@ -268,6 +268,7 @@ function KanisyncUI:manageEntry(anilist_data)
                             return
                         end
                         self.plugin:saveBookUserMetadata(result)
+                        self.ephemeralMessage(_("Updated score"))
                     end)
                 end
 
@@ -474,7 +475,7 @@ function KanisyncUI:datesReadMenu(anilist_data)
 
     local current_date = os.date("*t")
 
-    local function updateDate(values)
+    local function updateDate(values, success_message)
         NetworkMgr:runWhenOnline(function()
             local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
                 values)
@@ -483,6 +484,7 @@ function KanisyncUI:datesReadMenu(anilist_data)
                 return
             end
             self.plugin:saveBookUserMetadata(result)
+            self.ephemeralMessage(success_message)
         end)
     end
 
@@ -537,7 +539,7 @@ function KanisyncUI:datesReadMenu(anilist_data)
                             month = selected_date.month,
                             year = selected_date.year,
                         }
-                    })
+                    }, _("Updated started at date"))
                 end,
                 function()
                     updateDate({
@@ -558,7 +560,7 @@ function KanisyncUI:datesReadMenu(anilist_data)
                             month = selected_date.month,
                             year = selected_date.year,
                         }
-                    })
+                    }, _("Updated completed at date"))
                 end,
                 function()
                     updateDate({
