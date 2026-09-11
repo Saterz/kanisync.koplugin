@@ -229,6 +229,7 @@ function Kanisync:setAniListToken(token)
     self.user = nil
     self.settings:delSetting("anilist_user"):flush()
     if not self:hasToken() then
+        self.kanisync_ui.ephemeralMessage(_("AniList token removed"))
         return
     end
     local loading = self.kanisync_ui.showMessage(_("Verifying token..."))

@@ -396,6 +396,7 @@ function KanisyncUI:updateStatusMenu(anilist_data)
                     return
                 end
                 self.plugin:saveBookUserMetadata(result)
+                self.ephemeralMessage(_("Updated reading status"))
             end)
         end
     })
@@ -440,6 +441,7 @@ function KanisyncUI:progressMenu(anilist_data)
                                 return
                             end
                             self.plugin:saveBookUserMetadata(result)
+                            self.ephemeralMessage(_("Updated chapter progress"))
                         end)
                     end)
                 UIManager:show(dialog)
@@ -458,6 +460,7 @@ function KanisyncUI:progressMenu(anilist_data)
                                 return
                             end
                             self.plugin:saveBookUserMetadata(result)
+                            self.ephemeralMessage(_("Updated volume progress"))
                         end)
                     end)
                 UIManager:show(dialog)
@@ -539,12 +542,12 @@ function KanisyncUI:datesReadMenu(anilist_data)
                             month = selected_date.month,
                             year = selected_date.year,
                         }
-                    }, _("Updated started at date"))
+                    }, _("Updated started on date"))
                 end,
                 function()
                     updateDate({
                         startedAt = {}
-                    })
+                    }, _("Cleared started on date"))
                 end)
             UIManager:show(modal)
         end
@@ -560,12 +563,12 @@ function KanisyncUI:datesReadMenu(anilist_data)
                             month = selected_date.month,
                             year = selected_date.year,
                         }
-                    }, _("Updated completed at date"))
+                    }, _("Updated completed on date"))
                 end,
                 function()
                     updateDate({
                         completedAt = {}
-                    })
+                    }, _("Cleared completed on date"))
                 end)
             UIManager:show(modal)
         end
@@ -652,6 +655,7 @@ function KanisyncUI:settingsMenu()
 
     table.insert(menu, {
         text = _("Update AniList token"),
+        keep_menu_open = true,
         callback = function()
             self:updateTokenDialog()
         end
@@ -694,6 +698,7 @@ function KanisyncUI:progressUpdatePrompt(anilist_data, progress_scope, close_cal
                 return
             end
             self.plugin:saveBookUserMetadata(result)
+            self.ephemeralMessage(_("Updated reading progress"))
         end)
     end
 
@@ -757,7 +762,7 @@ function KanisyncUI:progressUpdatePrompt(anilist_data, progress_scope, close_cal
             ok_text = _("Update"),
 
             callback = function(spin)
-                updateProgress({ progressVolumes = spin.value })
+                updateProgress({ progressVolumes = spin.value }, _("Updated volume progress"))
             end,
             close_callback = close_callback,
         }
