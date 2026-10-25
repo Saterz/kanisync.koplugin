@@ -9,7 +9,10 @@ local ffiUtil = require("ffi/util")
 local _ = require("gettext")
 local Screen = Device.screen
 local T = ffiUtil.template
-local MediaHelpers = require("ui/media_helpers")
+
+local MediaHelpers = require("ui/ks_media_helpers")
+local SearchDialog = require("ui/dialogs/ks_search_dialog")
+local MediaPreview = require("ui/dialogs/ks_media_preview")
 local getMediaTitle = MediaHelpers.getMediaTitle
 local renderCover = MediaHelpers.renderCover
 
@@ -21,11 +24,11 @@ local MediaChooser = {}
 ---@param search_callback fun(search_query: string)
 ---@param cover_loader fun(url: string): string|nil
 ---@param on_loading_complete fun()
-function MediaChooser:mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader,
+function MediaChooser.mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader,
                                  on_loading_complete)
     if #media_list == 0 then
         on_loading_complete()
-        self.searchDialog(search_query, search_callback, true)
+        SearchDialog.searchDialog(search_query, search_callback, true)
         return
     end
 
@@ -41,7 +44,7 @@ function MediaChooser:mediaChooser(media_list, search_query, select_callback, se
                 indent = -thumbnail_state_width,
                 callback = function()
                     UIManager:nextTick(function()
-                        self.searchDialog(search_query, search_callback)
+                        SearchDialog.searchDialog(search_query, search_callback)
                     end)
                 end,
             },
@@ -79,8 +82,8 @@ function MediaChooser:mediaChooser(media_list, search_query, select_callback, se
                 state = cover_widget,
                 callback = function()
                     UIManager:nextTick(function()
-                        self:previewMedia(media, function()
-                            self:mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader,
+                        MediaPreview.previewMedia(media, function()
+                            MediaChooser.mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader,
                                 on_loading_complete)
                         end, select_callback, cover_loader)
                     end)

@@ -8,7 +8,9 @@ local ffiUtil = require("ffi/util")
 local _ = require("gettext")
 local Screen = Device.screen
 local T = ffiUtil.template
-local MediaHelpers = require("ui/media_helpers")
+
+local MediaHelpers = require("ui/ks_media_helpers")
+local Messages = require("ui/ks_messages")
 local getMediaTitle = MediaHelpers.getMediaTitle
 local renderCover = MediaHelpers.renderCover
 
@@ -18,7 +20,7 @@ local MediaPreview = {}
 ---@param back_callback function
 ---@param select_callback fun(media: table): string|nil
 ---@param cover_loader fun(url: string): string|nil
-function MediaPreview:previewMedia(media, back_callback, select_callback, cover_loader)
+function MediaPreview.previewMedia(media, back_callback, select_callback, cover_loader)
     local title = getMediaTitle(media)
     local details = {}
     if media.format then
@@ -41,7 +43,7 @@ function MediaPreview:previewMedia(media, back_callback, select_callback, cover_
         ok_callback = function()
             local error = select_callback(media)
             if error then
-                self.ephemeralMessage(error)
+                Messages.ephemeralMessage(error)
                 return
             end
         end,

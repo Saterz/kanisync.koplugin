@@ -1,11 +1,13 @@
 local UIManager = require("ui/uimanager")
 local InputDialog = require("ui/widget/inputdialog")
 local NetworkMgr = require("ui/network/manager")
+local Messages = require("ui/ks_messages")
 local _ = require("gettext")
 
 local NoteDialog = {}
 
-function NoteDialog:show(anilist_data, user_list_entry, hasNotes)
+---@param plugin Kanisync
+function NoteDialog.show(plugin, anilist_data, user_list_entry, hasNotes)
     local search_query = user_list_entry.notes
     local dialog
     dialog = InputDialog:new {
@@ -28,14 +30,14 @@ function NoteDialog:show(anilist_data, user_list_entry, hasNotes)
                         local query = dialog:getInputText()
                         UIManager:close(dialog)
                         NetworkMgr:runWhenOnline(function()
-                            local result, error = self.plugin.api:updateMediaList(user_list_entry.id,
+                            local result, error = plugin.api:updateMediaList(user_list_entry.id,
                                 anilist_data.id, { notes = query })
                             if error or not result then
-                                self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                                Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
                                 return
                             end
-                            self.plugin:saveBookUserMetadata(result)
-                            self.ephemeralMessage(_("Updated personal note"))
+                            plugin:saveBookUserMetadata(result)
+                            Messages.ephemeralMessage(_("Updated personal note"))
                         end)
                     end,
                 },

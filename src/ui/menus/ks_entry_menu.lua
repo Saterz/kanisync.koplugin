@@ -4,12 +4,21 @@ local NetworkMgr = require("ui/network/manager")
 local ffiUtil = require("ffi/util")
 local _ = require("gettext")
 local T = ffiUtil.template
-local getStatusLabel = require("ui/status_menu").getStatusLabel
+
+local NoteDialog = require("ui/dialogs/ks_note_dialog")
+local ScoreDialog = require("ui/dialogs/ks_score_dialog")
+local Progress = require("ui/dialogs/ks_progress")
+local SearchDialog = require("ui/dialogs/ks_search_dialog")
+local Messages = require("ui/ks_messages")
+local DatesMenu = require("ui/menus/ks_dates_menu")
+local StatusMenu = require("ui/menus/ks_status_menu")
+local getStatusLabel = StatusMenu.getStatusLabel
 
 local EntryMenu = {}
 
+---@param plugin Kanisync
 ---@param anilist_data KanisyncEntry
-function EntryMenu:manageEntry(anilist_data)
+function EntryMenu.manageEntry(plugin, anilist_data)
     local user_list_entry = anilist_data.user_list_entry
 
     local hasNotes = user_list_entry.notes ~= nil and user_list_entry.notes ~= ""
@@ -20,31 +29,31 @@ function EntryMenu:manageEntry(anilist_data)
             callback = function()
                 NetworkMgr:runWhenOnline(function()
                     local id = anilist_data.id
-                    local media, error = self.plugin.api:getMedia(id)
+                    local media, error = plugin.api:getMedia(id)
                     if error or not media then
-                        self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                        Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
                         return
                     end
 
-                    self.plugin:saveBookAniListData(media)
+                    plugin:saveBookAniListData(media)
 
-                    self.ephemeralMessage(_("Changes pulled from AniList."))
+                    Messages.ephemeralMessage(_("Changes pulled from AniList."))
                 end)
             end
         },
         {
             text = _("Progress"),
-            sub_item_table = self:progressMenu(anilist_data)
+            sub_item_table = Progress.progressMenu(plugin, anilist_data)
         },
         {
             text = user_list_entry.status and T(_("Reading status: %1"), getStatusLabel(user_list_entry.status)) or
                 _("Reading status: Not in library"),
-            sub_item_table = self:updateStatusMenu(anilist_data)
+            sub_item_table = StatusMenu.updateStatusMenu(plugin, anilist_data)
         },
         {
             text = hasNotes and _("Edit note") or _("Add note"),
             callback = function()
-                self:_editNote(anilist_data, user_list_entry, hasNotes)
+                NoteDialog.show(plugin, anilist_data, user_list_entry, hasNotes)
             end
         },
         {
@@ -52,26 +61,26 @@ function EntryMenu:manageEntry(anilist_data)
                 and T(
                     _("Score: %1 / %2"),
                     user_list_entry.score,
-                    self.plugin.score_formats[
-                    self.plugin.user.mediaListOptions.scoreFormat
+                    plugin.score_formats[
+                    plugin.user.mediaListOptions.scoreFormat
                     ].maximum
                 )
                 or _("Score: Not rated"),
             callback = function()
-                self:_editScore(anilist_data, user_list_entry, hasScore)
+                ScoreDialog.show(plugin, anilist_data, user_list_entry, hasScore)
             end
         },
         {
             text = _("Dates read"),
-            sub_item_table = self:datesReadMenu(anilist_data)
+            sub_item_table = DatesMenu.datesReadMenu(plugin, anilist_data)
         },
         {
             text = _("Change linked book"),
             keep_menu_open = false,
             callback = function()
                 NetworkMgr:runWhenOnline(function()
-                    self.searchDialog("", function(query)
-                        self.plugin:linkBookToAniList(query)
+                    SearchDialog.searchDialog("", function(query)
+                        plugin:linkBookToAniList(query)
                     end)
                 end)
             end,
@@ -86,8 +95,8 @@ function EntryMenu:manageEntry(anilist_data)
                         anilist_data.title),
                     ok_text = _("Unlink"),
                     ok_callback = function()
-                        self.plugin:unlinkBook()
-                        self.ephemeralMessage(_("Book unlinked"))
+                        plugin:unlinkBook()
+                        Messages.ephemeralMessage(_("Book unlinked"))
                     end,
                 })
             end

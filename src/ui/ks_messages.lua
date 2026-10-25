@@ -6,10 +6,9 @@ local T = ffiUtil.template
 
 local Messages = {}
 
-function Messages:about()
-    UIManager:show(InfoMessage:new({
-        text = T(_("%1\n\n%2\n\nVersion: v%3"), self.plugin.fullname, self.plugin.description, self.plugin.version),
-    }))
+---@param plugin Kanisync
+function Messages.about(plugin)
+    Messages.showMessage(T(_("%1\n\n%2\n\nVersion: v%3"), plugin.fullname, plugin.description, plugin.version))
 end
 
 ---@param message string

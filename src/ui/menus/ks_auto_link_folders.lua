@@ -8,8 +8,9 @@ local T = ffiUtil.template
 
 local AutoLinkFolders = {}
 
-function AutoLinkFolders:autoLinkFoldersMenu()
-    local folders = self.plugin:getAutoLinkFolders()
+---@param plugin Kanisync
+function AutoLinkFolders.autoLinkFoldersMenu(plugin)
+    local folders = plugin:getAutoLinkFolders()
     local menu = {
         {
             text = _("Add auto-link folder"),
@@ -25,8 +26,8 @@ function AutoLinkFolders:autoLinkFoldersMenu()
                             if folders[folder_index] == path then return end
                         end
                         table.insert(folders, path)
-                        self.plugin.settings:saveSetting("auto_link_folders", folders):flush()
-                        touchmenu_instance.item_table = self:autoLinkFoldersMenu()
+                        plugin.settings:saveSetting("auto_link_folders", folders):flush()
+                        touchmenu_instance.item_table = AutoLinkFolders.autoLinkFoldersMenu(plugin)
                         touchmenu_instance:updateItems()
                     end,
                 })
@@ -47,8 +48,8 @@ function AutoLinkFolders:autoLinkFoldersMenu()
                         for current_index = 1, #folders do
                             if folders[current_index] == selected_folder then
                                 table.remove(folders, current_index)
-                                self.plugin.settings:saveSetting("auto_link_folders", folders):flush()
-                                touchmenu_instance.item_table = self:autoLinkFoldersMenu()
+                                plugin.settings:saveSetting("auto_link_folders", folders):flush()
+                                touchmenu_instance.item_table = AutoLinkFolders.autoLinkFoldersMenu(plugin)
                                 touchmenu_instance:updateItems()
                                 return
                             end

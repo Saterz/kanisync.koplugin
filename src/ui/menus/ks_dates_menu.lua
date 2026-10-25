@@ -6,9 +6,13 @@ local datetime = require("datetime")
 local _ = require("gettext")
 local T = ffiUtil.template
 
+local Messages = require("ui/ks_messages")
+
 local DatesMenu = {}
 
-function DatesMenu:datesReadMenu(anilist_data)
+---@param plugin Kanisync
+---@param anilist_data KanisyncEntry
+function DatesMenu.datesReadMenu(plugin, anilist_data)
     local user_list_entry = anilist_data.user_list_entry
 
     local menu = {}
@@ -17,14 +21,14 @@ function DatesMenu:datesReadMenu(anilist_data)
 
     local function updateDate(values, success_message)
         NetworkMgr:runWhenOnline(function()
-            local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
+            local result, error = plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
                 values)
             if error or not result then
-                self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
                 return
             end
-            self.plugin:saveBookUserMetadata(result)
-            self.ephemeralMessage(success_message)
+            plugin:saveBookUserMetadata(result)
+            Messages.ephemeralMessage(success_message)
         end)
     end
 

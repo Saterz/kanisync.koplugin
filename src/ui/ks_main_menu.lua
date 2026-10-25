@@ -4,18 +4,24 @@ local ffiUtil = require("ffi/util")
 local _ = require("gettext")
 local T = ffiUtil.template
 
+local Messages = require("ui/ks_messages")
+local SettingsMenu = require("ui/menus/ks_settings_menu")
+local TokenDialog = require("ui/dialogs/ks_token_dialog")
+local EntryMenu = require("ui/menus/ks_entry_menu")
+
 local MainMenu = {}
 
+---@param plugin Kanisync
 ---@param anilist_data KanisyncEntry?
-function MainMenu:main_menu(anilist_data)
-    local user = self.plugin.user
+function MainMenu.main_menu(plugin, anilist_data)
+    local user = plugin.user
 
     local menu = {}
-    if not self.plugin:hasToken() then
+    if not plugin:hasToken() then
         table.insert(menu, {
             text = _("Token not found"),
             callback = function()
-                self:updateTokenDialog()
+                TokenDialog.updateTokenDialog(plugin)
             end,
         })
     else
@@ -24,11 +30,11 @@ function MainMenu:main_menu(anilist_data)
                 text = T(_("Connected as %1"), user.name),
                 enabled = false,
             })
-            if self.plugin:isBookOpen() then
+            if plugin:isBookOpen() then
                 if anilist_data ~= nil then
                     table.insert(menu, {
                         text = T(_('Linked to "%1"'), anilist_data.title),
-                        sub_item_table = self:manageEntry(anilist_data)
+                        sub_item_table = EntryMenu.manageEntry(plugin, anilist_data)
                     })
                 else
                     table.insert(menu, {
@@ -36,7 +42,7 @@ function MainMenu:main_menu(anilist_data)
                         keep_menu_open = false,
                         callback = function()
                             NetworkMgr:runWhenOnline(function()
-                                self.plugin:linkBookToAniList()
+                                plugin:linkBookToAniList()
                             end)
                         end,
                     })
@@ -46,9 +52,9 @@ function MainMenu:main_menu(anilist_data)
             table.insert(menu, {
                 text = _("Verify token"),
                 callback = function()
-                    local loading = self.showMessage(_("Verifying token..."))
+                    local loading = Messages.showMessage(_("Verifying token..."))
                     UIManager:tickAfterNext(function()
-                        self.plugin:refreshAniListUser(function()
+                        plugin:refreshAniListUser(function()
                             UIManager:close(loading)
                         end)
                     end)
@@ -59,13 +65,13 @@ function MainMenu:main_menu(anilist_data)
 
     table.insert(menu, {
         text = _("Settings"),
-        sub_item_table = self:settingsMenu()
+        sub_item_table = SettingsMenu.settingsMenu(plugin)
     })
     table.insert(menu, {
         text = _("About"),
         keep_menu_open = true,
         callback = function()
-            self:about()
+            Messages.about(plugin)
         end,
     })
 

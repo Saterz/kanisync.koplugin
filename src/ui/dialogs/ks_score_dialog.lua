@@ -6,26 +6,29 @@ local ffiUtil = require("ffi/util")
 local _ = require("gettext")
 local T = ffiUtil.template
 
+local Messages = require("ui/ks_messages")
+
 local ScoreDialog = {}
 
-function ScoreDialog:show(anilist_data, user_list_entry, hasScore)
-    local score_format_name = self.plugin.user.mediaListOptions.scoreFormat
-    local score_format = self.plugin.score_formats[score_format_name]
+---@param plugin Kanisync
+function ScoreDialog.show(plugin, anilist_data, user_list_entry, hasScore)
+    local score_format_name = plugin.user.mediaListOptions.scoreFormat
+    local score_format = plugin.score_formats[score_format_name]
     if not score_format then
-        self.ephemeralMessage(_("Unable to determine your AniList score format."))
+        Messages.ephemeralMessage(_("Unable to determine your AniList score format."))
         return
     end
 
     local function saveScore(score)
         NetworkMgr:runWhenOnline(function()
-            local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
+            local result, error = plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
                 { score = score })
             if error or not result then
-                self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
                 return
             end
-            self.plugin:saveBookUserMetadata(result)
-            self.ephemeralMessage(_("Updated score"))
+            plugin:saveBookUserMetadata(result)
+            Messages.ephemeralMessage(_("Updated score"))
         end)
     end
 
@@ -73,7 +76,7 @@ function ScoreDialog:show(anilist_data, user_list_entry, hasScore)
                         local valid_step = score and math.abs(score / score_format.step
                             - math.floor(score / score_format.step + 0.5)) < 0.000001
                         if not valid_step or score < score_format.minimum or score > score_format.maximum then
-                            self.ephemeralMessage(T(_("Enter a score from %1 to %2 in increments of %3."),
+                            Messages.ephemeralMessage(T(_("Enter a score from %1 to %2 in increments of %3."),
                                 score_format.minimum, score_format.maximum, score_format.step))
                             return
                         end

@@ -16,8 +16,8 @@ local lfs = require("libs/libkoreader-lfs")
 local T = ffiUtil.template
 local _ = require("gettext")
 
-local KanisyncUI = require("ui/init")
-local KanisyncApi = require("api")
+local KanisyncUI = require("ui/ks_init")
+local KanisyncApi = require("ks_api")
 
 local LEGACY_SETTINGS_PATH = DataStorage:getSettingsDir() .. "/kanisync_settings.lua"
 local SETTINGS_DIR = DataStorage:getSettingsDir() .. "/Kanisync"
@@ -400,15 +400,15 @@ function Kanisync:linkBookToAniList(search_query)
 
         if #media_list == 1 then
             local media = media_list[1]
-            self.kanisync_ui:previewMedia(media, function()
-                self.kanisync_ui:mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader,
+            self.kanisync_ui.previewMedia(media, function()
+                self.kanisync_ui.mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader,
                     on_loading_complete)
             end, select_callback, cover_loader)
             on_loading_complete()
             return
         end
 
-        self.kanisync_ui:mediaChooser(
+        self.kanisync_ui.mediaChooser(
             media_list,
             search_query,
             select_callback,

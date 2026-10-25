@@ -6,9 +6,12 @@ local ffiUtil = require("ffi/util")
 local _ = require("gettext")
 local T = ffiUtil.template
 
+local Messages = require("ui/ks_messages")
+
 local Progress = {}
 
-function Progress:progressMenu(anilist_data)
+---@param plugin Kanisync
+function Progress.progressMenu(plugin, anilist_data)
     local user_list_entry = anilist_data.user_list_entry
 
     local chapter_text = anilist_data.chapters and T("Chapter %1 of %2", user_list_entry.progress, anilist_data.chapters) or
@@ -38,14 +41,14 @@ function Progress:progressMenu(anilist_data)
                 local dialog = updateProgressSpinWidget("Chapter progress", "chapters", user_list_entry.progress,
                     anilist_data.chapters, function(spin)
                         NetworkMgr:runWhenOnline(function()
-                            local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
+                            local result, error = plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
                                 { progress = spin.value })
                             if error or not result then
-                                self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                                Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
                                 return
                             end
-                            self.plugin:saveBookUserMetadata(result)
-                            self.ephemeralMessage(_("Updated chapter progress"))
+                            plugin:saveBookUserMetadata(result)
+                            Messages.ephemeralMessage(_("Updated chapter progress"))
                         end)
                     end)
                 UIManager:show(dialog)
@@ -57,14 +60,14 @@ function Progress:progressMenu(anilist_data)
                 local dialog = updateProgressSpinWidget("Volume progress", "volumes", user_list_entry.progress_volumes,
                     anilist_data.volumes, function(spin)
                         NetworkMgr:runWhenOnline(function()
-                            local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
+                            local result, error = plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
                                 { progressVolumes = spin.value })
                             if error or not result then
-                                self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                                Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
                                 return
                             end
-                            self.plugin:saveBookUserMetadata(result)
-                            self.ephemeralMessage(_("Updated volume progress"))
+                            plugin:saveBookUserMetadata(result)
+                            Messages.ephemeralMessage(_("Updated volume progress"))
                         end)
                     end)
                 UIManager:show(dialog)
@@ -75,25 +78,26 @@ function Progress:progressMenu(anilist_data)
     return menu
 end
 
+---@param plugin Kanisync
 ---@param anilist_data table
 ---@param progress_scope
 ---| "both"
 ---| "chapter"
 ---| "volume"
 ---@param close_callback? function
-function Progress:progressUpdatePrompt(anilist_data, progress_scope, close_callback)
+function Progress.progressUpdatePrompt(plugin, anilist_data, progress_scope, close_callback)
     local user_list_entry = anilist_data.user_list_entry
 
     local function updateProgress(values)
         NetworkMgr:runWhenOnline(function()
-            local result, error = self.plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
+            local result, error = plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
                 values)
             if error or not result then
-                self.ephemeralMessage(error or _("AniList returned an invalid response"))
+                Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
                 return
             end
-            self.plugin:saveBookUserMetadata(result)
-            self.ephemeralMessage(_("Updated reading progress"))
+            plugin:saveBookUserMetadata(result)
+            Messages.ephemeralMessage(_("Updated reading progress"))
         end)
     end
 

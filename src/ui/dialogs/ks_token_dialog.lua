@@ -6,7 +6,8 @@ local _ = require("gettext")
 
 local TokenDialog = {}
 
-function TokenDialog:updateTokenDialog()
+---@param plugin Kanisync
+function TokenDialog.updateTokenDialog(plugin)
     local input
     input = InputDialog:new({
         title = _("Update AniList token"),
@@ -39,7 +40,7 @@ function TokenDialog:updateTokenDialog()
                     callback = function()
                         local value = input:getInputText()
                         UIManager:close(input)
-                        self.plugin:setAniListToken(value)
+                        plugin:setAniListToken(value)
                     end,
                 },
             }
