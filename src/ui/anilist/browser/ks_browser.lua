@@ -8,6 +8,10 @@ local Row = require("ui/anilist/browser/ks_result_row")
 local UIManager = require("ui/uimanager")
 local _ = require("gettext")
 
+-- AniList cannot search titles in a MediaList request. Skip a few empty pages per
+-- action, then let the user continue so very large libraries don't block the UI.
+local MAX_LIBRARY_SEARCH_PAGES = 4
+
 local Browser = {}
 Browser.__index = Browser
 
@@ -84,7 +88,14 @@ function Browser:loadPage(page, options, last_local_page)
                 self:reportError(_("Could not verify your AniList account. Check your access token and try again."))
                 return
             end
-            data = self.api:library(self.viewer.id, options, page)
+            local direction = last_local_page and -1 or 1
+            local limit = options.search and MAX_LIBRARY_SEARCH_PAGES or 1
+            for attempt = 1, limit do
+                data = self.api:library(self.viewer.id, options, page)
+                if not data or #data.items > 0 or attempt == limit then break end
+                if direction == 1 and not data.has_next or direction == -1 and page == 1 then break end
+                page = page + direction
+            end
         else
             local query = options
             if not options.sort and not options.search then
@@ -108,7 +119,12 @@ function Browser:loadPage(page, options, last_local_page)
             rows[index] = entry
         end
         if #rows == 0 then
-            rows[1] = { text = _("No entries on this page"), select_enabled = false }
+            local message = _("No entries on this page")
+            if self.mode == "library" and options.search then
+                message = _("No matching titles on the pages checked.")
+                if data.has_next then message = _("No matches yet. Go to the next page to keep searching.") end
+            end
+            rows[1] = { text = message, select_enabled = false }
         end
         self.widget:updateSearchLabel()
         self.widget:switchItemTable(nil, rows, last_local_page and #rows or nil)
@@ -118,7 +134,8 @@ end
 function Browser:openSearch()
     local dialog
     dialog = InputDialog:new {
-        title = _("Search AniList titles"), input = self.options.search or "",
+        title = self.mode == "library" and _("Search your library") or _("Search AniList titles"),
+        input = self.options.search or "",
         description = _("Leave blank to browse without a title search."),
         buttons = { {
             { text = _("Cancel"), id = "close", callback = function() UIManager:close(dialog) end },

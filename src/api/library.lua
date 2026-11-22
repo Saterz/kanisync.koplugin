@@ -1,9 +1,40 @@
 local Common = require("api/common")
 local Fields = require("api/fields")
 
----@alias LibraryOptions { type?: string, status?: string, sort?: string }
+---@alias LibraryOptions { type?: string, status?: string, sort?: string, search?: string }
 ---@alias AniListFuzzyDateInput { year?: integer, month?: integer, day?: integer }
 ---@alias MediaListUpdateValues { progress?: integer, progressVolumes?: integer, score?: number, notes?: string, status?: ReadingStatus, repeat_count?: integer, priority?: integer, private?: boolean, hiddenFromStatusLists?: boolean, customLists?: string[], advancedScores?: number[], startedAt?: AniListFuzzyDateInput, completedAt?: AniListFuzzyDateInput }
+
+-- KOReader supplies UTF-8 case folding; standalone callers may not have it.
+local has_util, util = pcall(require, "util")
+local lowercase_utf8 = has_util and type(util) == "table"
+    and type(util.stringLower) == "function" and util.stringLower
+local title_fields = { "userPreferred", "romaji", "english", "native" }
+
+local function lowercase(text)
+    -- The native helper uses NUL-terminated strings. Also avoid turning a
+    -- nonempty search into an empty needle if case folding removes characters.
+    if lowercase_utf8 and not text:find("\0", 1, true) then
+        local folded = lowercase_utf8(text)
+        if folded and folded ~= "" then
+            return folded
+        end
+    end
+    return text:lower()
+end
+
+local function titleMatches(title, needle)
+    if type(title) ~= "table" then
+        return false
+    end
+    for index = 1, #title_fields do
+        local name = title[title_fields[index]]
+        if type(name) == "string" and lowercase(name):find(needle, 1, true) then
+            return true
+        end
+    end
+    return false
+end
 
 local Library = {}
 
@@ -83,6 +114,7 @@ function Library.getUser(self)
 end
 
 --- The embedded mediaListEntry belongs to user_id, which need not be the viewer.
+--- A nonempty options.search filters titles on this server page only; has_next is unchanged.
 ---@param user_id integer
 ---@param options? LibraryOptions
 ---@param page? integer One-based AniList page (default 1)
@@ -111,17 +143,19 @@ function Library:library(user_id, options, page)
     if not data then
         return nil, page_err
     end
+    local needle = type(options.search) == "string" and options.search ~= "" and lowercase(options.search)
     local items = {}
     for index = 1, #data.mediaList do
         local entry = data.mediaList[index]
         local media = type(entry) == "table" and entry.media
-        if Common.isVisible(self, media) then
+        if Common.isVisible(self, media) and (not needle or titleMatches(media.title, needle)) then
             entry.media = nil -- Move the entry onto the media without creating a reference cycle.
             media.mediaListEntry = entry
             items[#items + 1] = media
         end
     end
-    -- Page.mediaList has no isAdult argument. Don't backfill; even an empty page can have a successor.
+    -- Page.mediaList supports neither title search nor isAdult. Don't backfill;
+    -- even an empty filtered page can have a successor.
     return { items = items, has_next = data.pageInfo.hasNextPage }
 end
 

@@ -2,6 +2,8 @@ local Blitbuffer = require("ffi/blitbuffer")
 local Button = require("ui/widget/button")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local Device = require("device")
+local Filters = require("ui/anilist/filters/ks_filters")
+local Font = require("ui/font")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local Geom = require("ui/geometry")
 local GestureRange = require("ui/gesturerange")
@@ -12,6 +14,7 @@ local InputContainer = require("ui/widget/container/inputcontainer")
 local Menu = require("ui/widget/menu")
 local Row = require("ui/anilist/browser/ks_result_row")
 local Size = require("ui/size")
+local TextBoxWidget = require("ui/widget/textboxwidget")
 local TitleBar = require("ui/widget/titlebar")
 local UIManager = require("ui/uimanager")
 local VerticalGroup = require("ui/widget/verticalgroup")
@@ -91,33 +94,37 @@ function Results:init()
         HorizontalSpan:new { width = gap }, catalog_tab,
         HorizontalSpan:new { width = gap }, library_tab,
     }
-    local controls = {}
-    local search = Button:new {
+    self.search_button = Button:new {
         text = "", align = "left", width = width - 2 * gap, radius = Size.radius.button,
-        show_parent = self, callback = function() controller:openFilters() end,
+        avoid_text_truncation = false, show_parent = self, callback = function() controller:openSearch() end,
     }
-    local row = HorizontalGroup:new { HorizontalSpan:new { width = gap } }
-    if controller.mode == "catalog" then
-        local side = search:getSize().h
-        controls[1] = FilterButton:new {
-            side = side, file = controller.plugin.path .. "/ui/anilist/browser/sliders-horizontal.svg",
-            callback = function() controller:openFilters() end,
-        }
-        controls[2] = search
-        search.callback = function() controller:openSearch() end
-        self.search_width = width - 3 * gap - side
-        row[#row + 1] = controls[1]
-        row[#row + 1] = HorizontalSpan:new { width = gap }
-    else
-        controls[1] = search
-    end
-    self.search_button = search
-    self:updateSearchLabel()
-    row[#row + 1] = search
+    local side = self.search_button:getSize().h
+    self.search_width = width - 3 * gap - side
+    self.filter_button = FilterButton:new {
+        side = side, file = controller.plugin.path .. "/ui/anilist/browser/sliders-horizontal.svg",
+        callback = function() controller:openFilters() end,
+    }
+    local row = HorizontalGroup:new {
+        HorizontalSpan:new { width = gap }, self.filter_button,
+        HorizontalSpan:new { width = gap }, self.search_button,
+    }
+    local face = Font:getFace("smallinfofont", 15)
+    self.filter_summary = TextBoxWidget:new {
+        text = "", width = width - 2 * gap, face = face, fgcolor = Blitbuffer.COLOR_DARK_GRAY,
+        height = 2 * math.floor(1.15 * face.size + 0.5), line_height = 0.15,
+        height_overflow_show_ellipsis = true,
+    }
+    local summary_row = HorizontalGroup:new {
+        HorizontalSpan:new { width = gap }, self.filter_summary, HorizontalSpan:new { width = gap },
+    }
     self.custom_title_bar = Header:new {
-        align = "left", title_bar = title_bar, controls = controls, other_tab = other_tab,
-        title_bar, navbar, VerticalSpan:new { width = gap }, row, VerticalSpan:new { width = gap },
+        align = "left", title_bar = title_bar, controls = { self.filter_button, self.search_button }, other_tab = other_tab,
+        title_bar, navbar, VerticalSpan:new { width = gap }, row, VerticalSpan:new { width = Size.padding.small },
+        summary_row, VerticalSpan:new { width = gap },
     }
+    self.summary_row = summary_row
+    self.search_row = row
+    self:updateSearchLabel()
     local available = height - self.custom_title_bar:getHeight() - Screen:scaleBySize(55)
     self.items_per_page = math.max(1, math.min(8, math.floor(available / Screen:scaleBySize(110))))
     Menu.init(self)
@@ -184,12 +191,11 @@ end
 
 function Results:updateSearchLabel()
     local options = self.controller.options
-    local kind = options.type == "ANIME" and _("Anime")
-        or options.format == "NOVEL" and _("Light novels") or _("Manga")
-    local label = self.controller.mode == "library" and T(_("Filters: %1"), kind)
-        or T(_("%1 · %2"), kind, options.search or _("Search titles…"))
-    if options.tag then label = T(_("%1 · Tag: %2"), label, options.tag) end
-    self.search_button:setText(label, self.search_width or self.search_button.width)
+    self.search_button:setText(options.search or _("Search titles…"), self.search_width)
+    self.filter_summary:setText(Filters.summary(self.controller.mode, options))
+    self.search_row:resetLayout()
+    self.summary_row:resetLayout()
+    self.custom_title_bar:resetLayout()
 end
 
 function Results:updatePageInfo(select_number)
@@ -212,7 +218,10 @@ function Results:mergeTitleBarIntoLayout()
     if Device:hasSymKey() or Device:hasScreenKB() then
         -- The native title bar has shortcuts on these devices; our tabs still need focus.
         table.insert(self.layout, 1, { self.title_bar.other_tab })
-        self.selected.y = self.selected.y + 1
+        for index = 1, #self.title_bar.controls do
+            table.insert(self.layout, index + 1, { self.title_bar.controls[index] })
+        end
+        self.selected.y = self.selected.y + 1 + #self.title_bar.controls
     else
         Menu.mergeTitleBarIntoLayout(self)
     end

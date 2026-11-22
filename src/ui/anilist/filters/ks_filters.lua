@@ -96,6 +96,39 @@ local seasons = {
     { "FALL", _("Fall") },
 }
 
+local function choiceLabel(choices, value, unset_label)
+    if value == nil then return unset_label end
+    for index = 1, #(choices or {}) do
+        if choices[index][1] == value then return choices[index][2] end
+    end
+    return tostring(value)
+end
+
+function Filters.summary(mode, options)
+    local media_type = options.type or "MANGA"
+    local is_catalog = mode == "catalog"
+    local default_sort = _("Default")
+    if is_catalog then default_sort = options.search and _("Relevance") or _("Most popular") end
+    local values = {
+        choiceLabel(media_types, media_type),
+        T(_("Sort: %1"), choiceLabel(is_catalog and catalog_sorts or library_sorts, options.sort, default_sort)),
+    }
+    local function add(label, value, choices)
+        if value then values[#values + 1] = T(_("%1: %2"), label, choiceLabel(choices, value)) end
+    end
+    if is_catalog then
+        add(_("Format"), options.format, formats[media_type])
+        add(_("Status"), options.status, publishing_statuses)
+        add(_("Genre"), options.genre, genres)
+        add(_("Tag"), options.tag)
+        add(_("Year"), options.year)
+        if media_type == "ANIME" then add(_("Season"), options.season, seasons) end
+    else
+        add(_("Status"), options.status, listStatuses(media_type == "ANIME"))
+    end
+    return table.concat(values, " · ")
+end
+
 local function fullscreenMenu(title, items)
     return Menu:new {
         title = title,
@@ -194,14 +227,7 @@ function Filters.show(mode, options, on_apply)
 
         local function add(field, title, choices, unset_label)
             local current = field == "type" and media_type or draft[field]
-            local label = current and tostring(current) or unset_label
-            for index = 1, #(choices or {}) do
-                local choice = choices[index]
-                if choice[1] == current then
-                    label = choice[2]
-                    break
-                end
-            end
+            local label = choiceLabel(choices, current, unset_label)
 
             local row = #items + 1
             local function update(value)
