@@ -57,12 +57,13 @@ function MediaPreview.previewMedia(media, back_callback, select_callback, cover_
     if cover_url then
         local max_width = confirm:getAddedWidgetAvailableWidth()
         local max_height = math.floor(Screen:getHeight() * 0.45)
-        local cover, cover_width, cover_height = renderCover(
-            media._cover_data or cover_loader(cover_url),
-            max_width,
-            max_height
-        )
+        local cached_data = MediaHelpers.getCachedCover(cover_url)
+        local cover_data = cached_data or cover_loader(cover_url)
+        local cover, cover_width, cover_height = renderCover(cover_data, max_width, max_height)
         if cover then
+            if not cached_data then
+                MediaHelpers.cacheCover(cover_url, cover_data)
+            end
             confirm:addWidget(CenterContainer:new {
                 dimen = Geom:new {
                     w = max_width,

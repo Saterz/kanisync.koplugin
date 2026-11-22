@@ -3,6 +3,7 @@ local CenterContainer = require("ui/widget/container/centercontainer")
 local Geom = require("ui/geometry")
 local ImageWidget = require("ui/widget/imagewidget")
 local Menu = require("ui/widget/menu")
+local Trapper = require("ui/trapper")
 local Device = require("device")
 local Size = require("ui/size")
 local ffiUtil = require("ffi/util")
@@ -17,6 +18,13 @@ local getMediaTitle = MediaHelpers.getMediaTitle
 local renderCover = MediaHelpers.renderCover
 
 local MediaChooser = {}
+local CoverSlot = CenterContainer:extend{}
+
+function CoverSlot:paintTo(bb, x, y)
+    if self[1] then
+        CenterContainer.paintTo(self, bb, x, y)
+    end
+end
 
 ---@param media_list table
 ---@param search_query string
@@ -35,7 +43,7 @@ function MediaChooser.mediaChooser(media_list, search_query, select_callback, se
     UIManager:nextTick(function()
         local thumbnail_width = Screen:scaleBySize(48)
         local thumbnail_height = Screen:scaleBySize(68)
-        local thumbnail_buffers = {}
+
         local thumbnail_state_width = thumbnail_width + Size.span.horizontal_default
         local items = {
             {
@@ -50,7 +58,6 @@ function MediaChooser.mediaChooser(media_list, search_query, select_callback, se
             },
         }
 
-        local chooser
         for media_index = 1, #media_list do
             local media = media_list[media_index]
 
@@ -58,28 +65,17 @@ function MediaChooser.mediaChooser(media_list, search_query, select_callback, se
             local cover_url = type(media.coverImage) == "table"
                 and type(media.coverImage.medium) == "string"
                 and media.coverImage.medium
-            if cover_url then
-                media._cover_data = media._cover_data or cover_loader(cover_url)
-                local cover = renderCover(media._cover_data, thumbnail_width, thumbnail_height)
-                if cover then
-                    table.insert(thumbnail_buffers, cover)
-                    cover_widget = CenterContainer:new {
-                        dimen = Geom:new {
-                            w = thumbnail_width,
-                            h = thumbnail_height,
-                        },
-                        ImageWidget:new {
-                            image = cover,
-                            image_disposable = false,
-                        },
-                    }
-                end
+            if cover_url and cover_url ~= "" then
+                cover_widget = CoverSlot:new {
+                    dimen = Geom:new { w = thumbnail_width, h = thumbnail_height },
+                }
             end
 
             table.insert(items, {
                 text = getMediaTitle(media),
                 mandatory = media.mediaListEntry and _("In Library") or nil,
                 state = cover_widget,
+                cover_url = cover_widget and cover_url or nil,
                 callback = function()
                     UIManager:nextTick(function()
                         MediaPreview.previewMedia(media, function()
@@ -91,23 +87,92 @@ function MediaChooser.mediaChooser(media_list, search_query, select_callback, se
             })
         end
 
+        local chooser
+        local closed, load_scheduled, active_download
+        local scheduleCovers
+
+        local function loadNextCover()
+            load_scheduled = nil
+            if closed then return end
+
+            local page = chooser.page
+            local first = (page - 1) * chooser.perpage + 1
+            local last = math.min(first + chooser.perpage - 1, #items)
+            for index = first, last do
+                local item = items[index]
+                if item.cover_url and not item.cover_attempted then
+                    item.cover_attempted = true
+                    local cached_data = MediaHelpers.getCachedCover(item.cover_url)
+                    local cover_data = cached_data
+                    if not cover_data then
+                        -- A private trap lets us cancel on close without intercepting menu input.
+                        active_download = {}
+                        local completed, downloaded = Trapper:dismissableRunInSubprocess(function()
+                            return cover_loader(item.cover_url)
+                        end, active_download, true)
+                        active_download = nil
+                        if closed then return end
+                        if completed then cover_data = downloaded end
+                    end
+                    local cover = renderCover(cover_data, thumbnail_width, thumbnail_height)
+                    if cover then
+                        if not cached_data then
+                            MediaHelpers.cacheCover(item.cover_url, cover_data)
+                        end
+                        item.state[1] = ImageWidget:new { image = cover, image_disposable = false }
+                        if chooser.page == page then
+                            UIManager:setDirty(chooser, "ui", chooser.dimen)
+                        end
+                    end
+                    scheduleCovers()
+                    return
+                end
+            end
+        end
+
+        scheduleCovers = function()
+            if not closed and not load_scheduled and not active_download then
+                load_scheduled = UIManager:tickAfterNext(function()
+                    Trapper:wrap(loadNextCover)
+                end)
+            end
+        end
+
         chooser = Menu:new {
             title = T(_("AniList results for “%1”"), search_query),
             item_table = items,
             state_w = thumbnail_state_width,
             items_per_page = 6,
             multilines_forced = true,
+            is_borderless = true,
+            covers_fullscreen = true,
             dithered = true,
+            updateItems = function(menu, ...)
+                Menu.updateItems(menu, ...)
+                if chooser then scheduleCovers() end
+            end,
             close_callback = function()
-                UIManager:close(chooser)
-                for buffer_index = 1, #thumbnail_buffers do
-                    thumbnail_buffers[buffer_index]:free()
+                if not closed then UIManager:close(chooser) end
+            end,
+            onCloseWidget = function(menu)
+                if closed then return end
+                closed = true
+                if load_scheduled then UIManager:unschedule(load_scheduled) end
+                if active_download then active_download.dismiss_callback() end
+                for index = 2, #items do
+                    local slot = items[index].state
+                    if slot and slot[1] then
+                        slot[1]:free()
+                        slot[1].image:free()
+                        slot[1] = nil
+                    end
                 end
-                thumbnail_buffers = {}
+                Menu.onCloseWidget(menu)
             end,
         }
         on_loading_complete()
         UIManager:show(chooser)
+        scheduleCovers()
     end)
 end
 

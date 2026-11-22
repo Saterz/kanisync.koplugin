@@ -1,6 +1,20 @@
+local Cache = require("cache")
 local RenderImage = require("ui/renderimage")
 
 local MediaHelpers = {}
+
+-- Keep compressed data so thumbnails and previews can share the same cache.
+local cover_cache = Cache:new { size = 8 * 1024 * 1024, avg_itemsize = 64 * 1024 }
+
+function MediaHelpers.getCachedCover(url)
+    return cover_cache:get(url)
+end
+
+function MediaHelpers.cacheCover(url, image_data)
+    if cover_cache:willAccept(#image_data) then
+        cover_cache:insert(url, image_data, #image_data)
+    end
+end
 
 local function getMediaTitle(media)
     local title = media.title
