@@ -5,13 +5,6 @@ local _ = require("gettext")
 
 local Support = {}
 
-function Support.online(controller, callback)
-    if controller.ensureOnline then
-        controller:ensureOnline(callback)
-    else
-        callback()
-    end
-end
 
 function Support.error(controller, message)
     -- Use local messages, not raw transport errors that might contain request data.

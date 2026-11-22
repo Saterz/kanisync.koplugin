@@ -9,6 +9,7 @@ local ImageWidget = require("ui/widget/imagewidget")
 local InputContainer = require("ui/widget/container/inputcontainer")
 local MediaHelpers = require("ui/ks_media_helpers")
 local RenderImage = require("ui/renderimage")
+local Request = require("ui/ks_foreground_request")
 local Size = require("ui/size")
 local UIManager = require("ui/uimanager")
 local VerticalGroup = require("ui/widget/verticalgroup")
@@ -61,12 +62,21 @@ local function renderImage(data, max_w, max_h, max_scale)
     return image
 end
 
-local function downloadImage(api, url, limits, render)
-    local data = api.downloadImage(url, limits)
-    if type(data) ~= "string" or #data > limits.bytes then return end
-    local image = render(data)
-    if image then MediaHelpers.cacheCover(url, data) end
-    return image
+local function downloadBytes(download, url, limits)
+    if type(download) ~= "function" then return end
+    local data = download(url, limits)
+    if type(data) == "string" and #data >= 2 and #data <= limits.bytes then return data end
+end
+
+-- Called by the details worker. The parent supplies the URL it already has cached.
+function Cover.fetchThumbnail(download, media, cached_url)
+    local urls = coverUrls(media, false)
+    for index = 1, #urls do
+        local url = urls[index]
+        if url == cached_url then return end
+        local data = downloadBytes(download, url, thumbnail_limits)
+        if data then return url, data end
+    end
 end
 
 local Thumbnail = InputContainer:extend { focusable = true }
@@ -91,7 +101,7 @@ function Thumbnail:onTapCover()
     return true
 end
 
-function Cover.thumbnail(api, media, max_width, on_tap, show_parent)
+function Cover.thumbnail(media, max_width, on_tap, show_parent, downloaded_url, downloaded_data, cached_data)
     local max_w = math.floor(max_width) - 2 * Size.border.button
     local max_h = math.floor(Screen:getHeight() * 0.28) - 2 * Size.border.button
     if max_w < 1 or max_h < 1 then return end
@@ -99,9 +109,10 @@ function Cover.thumbnail(api, media, max_width, on_tap, show_parent)
     local urls = coverUrls(media, false)
     for index = 1, #urls do
         local url = urls[index]
-        local image = render(MediaHelpers.getCachedCover(url))
-        if not image and api and type(api.downloadImage) == "function" then
-            image = downloadImage(api, url, thumbnail_limits, render)
+        local image = render(MediaHelpers.getCachedCover(url) or (cached_data and cached_data[url]))
+        if not image and url == downloaded_url then
+            image = render(downloaded_data)
+            if image then MediaHelpers.cacheCover(url, downloaded_data) end
         end
         if image then
             return Thumbnail:new { image_widget = image, callback = on_tap, show_parent = show_parent }
@@ -165,35 +176,49 @@ end
 
 function Cover.show(controller, media, is_active_callback)
     local urls = coverUrls(media, true)
-    local api = controller.api
+    local download = controller.api and controller.api.downloadImage
     local function isActive() return not is_active_callback or is_active_callback() end
+    if not isActive() then return end
     local function render(data)
         -- Let even the medium asset grow beyond its thumbnail, within both screen and source limits.
         return renderImage(data, math.floor(Screen:getWidth() * 0.64), math.floor(Screen:getHeight() * 0.60), 3)
     end
-    local function load(first, online)
-        for index = first, #urls do
-            if not isActive() then return end
-            local url = urls[index]
-            local image = render(MediaHelpers.getCachedCover(url))
-            if not image and api and type(api.downloadImage) == "function" then
-                if not online and controller.ensureOnline then
-                    return controller:ensureOnline(function() return load(index, true) end)
-                end
-                image = downloadImage(api, url, preview_limits, render)
-            end
-            if image then
-                if not isActive() then
-                    image:free()
-                    return
-                end
-                local widget = Preview:new { image_widget = image }
-                UIManager:show(widget)
-                return widget
-            end
-        end
+    local function showImage(image)
+        local widget = Preview:new { image_widget = image }
+        UIManager:show(widget)
+        return widget
     end
-    return load(1, false)
+    local missing, fallback = {}, nil
+    for index = 1, #urls do
+        local url = urls[index]
+        local cached = MediaHelpers.getCachedCover(url)
+        if #missing == 0 then
+            local image = render(cached)
+            if image then return showImage(image) end
+        elseif cached then
+            -- A cached medium cover is the fallback if the large cover fails.
+            fallback = cached
+            break
+        end
+        if type(download) == "function" then missing[#missing + 1] = url end
+    end
+    if #missing == 0 then return end
+    Request.run(function()
+        for index = 1, #missing do
+            local url = missing[index]
+            local data = downloadBytes(download, url, preview_limits)
+            if data then return url, data end
+        end
+    end, function(url, data)
+        if not isActive() then return end
+        local image = render(data)
+        if image then
+            MediaHelpers.cacheCover(url, data)
+        else
+            image = render(fallback)
+        end
+        if image then showImage(image) end
+    end, { text = _("Loading AniList cover…"), is_active = isActive })
 end
 
 return Cover

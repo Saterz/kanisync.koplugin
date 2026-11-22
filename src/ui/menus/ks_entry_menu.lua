@@ -1,6 +1,6 @@
 local UIManager = require("ui/uimanager")
 local ConfirmBox = require("ui/widget/confirmbox")
-local NetworkMgr = require("ui/network/manager")
+local Request = require("ui/ks_foreground_request")
 local ffiUtil = require("ffi/util")
 local _ = require("gettext")
 local T = ffiUtil.template
@@ -20,6 +20,10 @@ local EntryMenu = {}
 ---@param anilist_data KanisyncEntry
 function EntryMenu.manageEntry(plugin, anilist_data)
     local user_list_entry = anilist_data.user_list_entry
+    local document = plugin.ui.document
+    local function is_active()
+        return document ~= nil and plugin.ui.document == document
+    end
 
     local hasNotes = user_list_entry.notes ~= nil and user_list_entry.notes ~= ""
 
@@ -27,9 +31,13 @@ function EntryMenu.manageEntry(plugin, anilist_data)
         {
             text = _("Pull changes"),
             callback = function()
-                NetworkMgr:runWhenOnline(function()
-                    local id = anilist_data.id
-                    local media, error = plugin.api:getMedia(id)
+                if not is_active() then return end
+                local api = plugin.api
+                local id = anilist_data.id
+                Request.run(function()
+                    return api:getMedia(id)
+                end, function(media, error)
+                    if not is_active() then return end
                     if error or not media then
                         Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
                         return
@@ -38,7 +46,7 @@ function EntryMenu.manageEntry(plugin, anilist_data)
                     plugin:saveBookAniListData(media)
 
                     Messages.ephemeralMessage(_("Changes pulled from AniList."))
-                end)
+                end, { text = _("Pulling changes from AniList..."), is_active = is_active })
             end
         },
         {
@@ -53,6 +61,7 @@ function EntryMenu.manageEntry(plugin, anilist_data)
         {
             text = hasNotes and _("Edit note") or _("Add note"),
             callback = function()
+                if not is_active() then return end
                 NoteDialog.show(plugin, anilist_data, user_list_entry)
             end
         },
@@ -67,6 +76,7 @@ function EntryMenu.manageEntry(plugin, anilist_data)
                 )
                 or _("Score: Not rated"),
             callback = function()
+                if not is_active() then return end
                 ScoreDialog.show(plugin, anilist_data, user_list_entry)
             end
         },
@@ -78,10 +88,9 @@ function EntryMenu.manageEntry(plugin, anilist_data)
             text = _("Change linked book"),
             keep_menu_open = false,
             callback = function()
-                NetworkMgr:runWhenOnline(function()
-                    SearchDialog.searchDialog("", function(query)
-                        plugin:linkBookToAniList(query)
-                    end)
+                if not is_active() then return end
+                SearchDialog.searchDialog("", function(query)
+                    if is_active() then plugin:linkBookToAniList(query) end
                 end)
             end,
         },

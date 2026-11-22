@@ -1,4 +1,4 @@
-local NetworkMgr = require("ui/network/manager")
+local Request = require("ui/ks_foreground_request")
 local _ = require("gettext")
 
 local Messages = require("ui/ks_messages")
@@ -30,6 +30,11 @@ end
 ---@param plugin Kanisync
 ---@param anilist_data KanisyncEntry
 function StatusMenu.updateStatusMenu(plugin, anilist_data)
+    local document = plugin.ui.document
+    local function is_active()
+        return document ~= nil and plugin.ui.document == document
+    end
+
     ---@type table
     local status_items = {}
     ---@type ReadingStatus
@@ -52,16 +57,21 @@ function StatusMenu.updateStatusMenu(plugin, anilist_data)
     table.insert(status_items, {
         text = _("Save"),
         callback = function()
-            NetworkMgr:runWhenOnline(function()
-                local result, error = plugin.api:updateMediaList(anilist_data.user_list_entry.id, anilist_data.id,
-                    { status = selected_status })
+            if not is_active() then return end
+            local api = plugin.api
+            local entry_id, media_id = anilist_data.user_list_entry.id, anilist_data.id
+            local status = selected_status
+            Request.run(function()
+                return api:updateMediaList(entry_id, media_id, { status = status })
+            end, function(result, error)
+                if not is_active() then return end
                 if error or not result then
                     Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
                     return
                 end
                 plugin:saveBookUserMetadata(result)
                 Messages.ephemeralMessage(_("Updated reading status"))
-            end)
+            end, { text = _("Updating reading status..."), mutation = true, is_active = is_active })
         end
     })
 

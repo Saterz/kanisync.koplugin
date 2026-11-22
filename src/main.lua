@@ -18,6 +18,7 @@ local _ = require("gettext")
 
 local KanisyncUI = require("ui/ks_init")
 local KanisyncApi = require("ks_api")
+local Request = require('ui/ks_foreground_request')
 
 local LEGACY_SETTINGS_PATH = DataStorage:getSettingsDir() .. "/kanisync_settings.lua"
 local SETTINGS_DIR = DataStorage:getSettingsDir() .. "/Kanisync"
@@ -226,44 +227,58 @@ function Kanisync:setAniListToken(token)
 
     self.token = token
     self.api.token = token
+    self.verification_request = nil
+    self.book_link_request = nil
     self.user = nil
     self.settings:delSetting("anilist_user"):flush()
     if not self:hasToken() then
         self.kanisync_ui.ephemeralMessage(_("AniList token removed"))
         return
     end
-    local loading = self.kanisync_ui.showMessage(_("Verifying token..."))
-    UIManager:tickAfterNext(function()
-        self:refreshAniListUser(function()
-            UIManager:close(loading)
-        end)
-    end)
+    self:refreshAniListUser()
 end
 
-function Kanisync:refreshAniListUser(completion_callback)
+function Kanisync:refreshAniListUser()
     if not self:hasToken() then
         self.user = nil
         self.settings:delSetting("anilist_user"):flush()
-        completion_callback()
         self.kanisync_ui.ephemeralMessage(_("No AniList access token is configured."))
         return
     end
 
-    NetworkMgr:runWhenOnline(function()
-        local user, error = self.api:getUser()
-        if error then
-            logger.err("Kanisync | Could not retrieve AniList user: ", error)
-            completion_callback()
-            self.kanisync_ui.ephemeralMessage("Could not retrieve AniList user")
+    local token = self.token
+    local api = KanisyncApi:new(token)
+    local request = {}
+    self.verification_request = request
+    local function is_active()
+        return self.verification_request == request and self.token == token
+    end
+    local function clear_request()
+        if self.verification_request == request then
+            self.verification_request = nil
+        end
+    end
+
+    Request.run(function()
+        return api:getUser()
+    end, function(user)
+        if not is_active() then return end
+        clear_request()
+        if type(user) ~= "table" or type(user.name) ~= "string" then
+            logger.err("Kanisync | Could not retrieve AniList user")
+            self.kanisync_ui.ephemeralMessage(_("Could not retrieve AniList user"))
             return
         end
         self.user = user
         self.settings:saveSetting("anilist_user", user):flush()
-        completion_callback()
         self.kanisync_ui.ephemeralMessage(
             T(_("Connected as %1"), user.name)
         )
-    end)
+    end, {
+        text = _("Verifying token..."),
+        is_active = is_active,
+        on_cancel = clear_request,
+    })
 end
 
 ---@return KanisyncEntry?
@@ -359,6 +374,9 @@ end
 
 ---@param search_query? string
 function Kanisync:linkBookToAniList(search_query)
+    local document = self.ui.document
+    if not document or not self:hasToken() then return end
+
     local book_details = self:getCurrentBookDetails()
 
     search_query = search_query
@@ -371,52 +389,63 @@ function Kanisync:linkBookToAniList(search_query)
         return
     end
 
-    local loading_widget = self.kanisync_ui.showMessage(_("Loading..."))
+    local token = self.token
+    local filter_adult_content = self.api.filter_adult_content
+    local api = KanisyncApi:new(token, filter_adult_content)
+    local existing_link = self:getBookAniListData()
+    local request = {}
+    self.book_link_request = request
+    local function is_active()
+        return self.book_link_request == request
+            and self.ui.document == document
+            and self.token == token
+            and self.api.filter_adult_content == filter_adult_content
+            and self:getBookAniListData() == existing_link
+    end
+    local function clear_request()
+        if self.book_link_request == request then
+            self.book_link_request = nil
+        end
+    end
 
     local function select_callback(media)
+        if not is_active() then return end
+        clear_request()
         local anilist_data = self:saveBookAniListData(media)
         self.kanisync_ui:progressUpdatePrompt(anilist_data, "both")
     end
 
     local function search_callback(refined_query)
-        self:linkBookToAniList(refined_query)
+        if is_active() then
+            self:linkBookToAniList(refined_query)
+        end
     end
 
-    local function cover_loader(cover_url)
-        return self.api.downloadImage(cover_url)
-    end
-
-    local function on_loading_complete()
-        UIManager:close(loading_widget)
-    end
-    UIManager:tickAfterNext(function()
-        local media_list, error = self.api:searchMedia(search_query)
-
+    local cover_loader = KanisyncApi.downloadImage
+    Request.run(function()
+        return api:searchMedia(search_query)
+    end, function(media_list, error)
+        if not is_active() then return end
         if not media_list then
-            UIManager:close(loading_widget)
+            clear_request()
             self.kanisync_ui.ephemeralMessage(error or _("An error occurred while fetching the media list."))
             return
         end
 
-        if #media_list == 1 then
-            local media = media_list[1]
-            self.kanisync_ui.previewMedia(media, function()
-                self.kanisync_ui.mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader,
-                    on_loading_complete)
-            end, select_callback, cover_loader)
-            on_loading_complete()
-            return
+        local function show_chooser()
+            self.kanisync_ui.mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader,
+                is_active)
         end
-
-        self.kanisync_ui.mediaChooser(
-            media_list,
-            search_query,
-            select_callback,
-            search_callback,
-            cover_loader,
-            on_loading_complete
-        )
-    end)
+        if #media_list == 1 then
+            self.kanisync_ui.previewMedia(media_list[1], show_chooser, select_callback, cover_loader, is_active)
+        else
+            show_chooser()
+        end
+    end, {
+        text = _("Loading..."),
+        is_active = is_active,
+        on_cancel = clear_request,
+    })
 end
 
 function Kanisync:unlinkBook()
@@ -488,12 +517,10 @@ function Kanisync:onReaderReady()
     if not should_auto_link then return end
 
     UIManager:nextTick(function()
-        NetworkMgr:runWhenOnline(function()
-            if not self.ui.document or self.ui.document ~= document or self:getBookAniListData() then
-                return
-            end
-            self:linkBookToAniList()
-        end)
+        if self.ui.document ~= document or self:getBookAniListData() then
+            return
+        end
+        self:linkBookToAniList()
     end)
 end
 

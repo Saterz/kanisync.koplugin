@@ -1,6 +1,6 @@
 local UIManager = require("ui/uimanager")
 local InputDialog = require("ui/widget/inputdialog")
-local NetworkMgr = require("ui/network/manager")
+
 local _ = require("gettext")
 
 local SearchDialog = {}
@@ -31,9 +31,7 @@ function SearchDialog.searchDialog(search_query, search_callback, no_results)
                         local query = dialog:getInputText()
                         if query and not query:match("^%s*$") then
                             UIManager:close(dialog)
-                            NetworkMgr:runWhenOnline(function()
-                                search_callback(query)
-                            end)
+                            search_callback(query)
                         end
                     end,
                 },

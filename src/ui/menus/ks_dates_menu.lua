@@ -1,5 +1,5 @@
 local UIManager = require("ui/uimanager")
-local NetworkMgr = require("ui/network/manager")
+local Request = require("ui/ks_foreground_request")
 local ffiUtil = require("ffi/util")
 local DateTimeWidget = require("ui/widget/datetimewidget")
 local datetime = require("datetime")
@@ -14,22 +14,30 @@ local DatesMenu = {}
 ---@param anilist_data KanisyncEntry
 function DatesMenu.datesReadMenu(plugin, anilist_data)
     local user_list_entry = anilist_data.user_list_entry
+    local document = plugin.ui.document
+    local function is_active()
+        return document ~= nil and plugin.ui.document == document
+    end
 
     local menu = {}
 
     local current_date = os.date("*t")
 
     local function updateDate(values, success_message)
-        NetworkMgr:runWhenOnline(function()
-            local result, error = plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
-                values)
+        if not is_active() then return end
+        local api = plugin.api
+        local entry_id, media_id = user_list_entry.id, anilist_data.id
+        Request.run(function()
+            return api:updateMediaList(entry_id, media_id, values)
+        end, function(result, error)
+            if not is_active() then return end
             if error or not result then
                 Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
                 return
             end
             plugin:saveBookUserMetadata(result)
             Messages.ephemeralMessage(success_message)
-        end)
+        end, { text = _("Updating reading dates..."), mutation = true, is_active = is_active })
     end
 
     local function displayDate(date)

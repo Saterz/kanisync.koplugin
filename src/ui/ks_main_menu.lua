@@ -1,5 +1,4 @@
-local UIManager = require("ui/uimanager")
-local NetworkMgr = require("ui/network/manager")
+
 local ffiUtil = require("ffi/util")
 local _ = require("gettext")
 local T = ffiUtil.template
@@ -42,9 +41,7 @@ function MainMenu.main_menu(plugin, anilist_data)
                         text = _("Link book to AniList"),
                         keep_menu_open = false,
                         callback = function()
-                            NetworkMgr:runWhenOnline(function()
-                                plugin:linkBookToAniList()
-                            end)
+                            plugin:linkBookToAniList()
                         end,
                     })
                 end
@@ -53,12 +50,7 @@ function MainMenu.main_menu(plugin, anilist_data)
             table.insert(menu, {
                 text = _("Verify token"),
                 callback = function()
-                    local loading = Messages.showMessage(_("Verifying token..."))
-                    UIManager:tickAfterNext(function()
-                        plugin:refreshAniListUser(function()
-                            UIManager:close(loading)
-                        end)
-                    end)
+                    plugin:refreshAniListUser()
                 end,
             })
         end

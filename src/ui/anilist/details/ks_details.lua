@@ -9,6 +9,8 @@ local FrameContainer = require("ui/widget/container/framecontainer")
 local Geom = require("ui/geometry")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan = require("ui/widget/horizontalspan")
+local MediaHelpers = require("ui/ks_media_helpers")
+local Request = require("ui/ks_foreground_request")
 local Row = require("ui/anilist/browser/ks_result_row")
 local ScrollableContainer = require("ui/widget/container/scrollablecontainer")
 local Size = require("ui/size")
@@ -93,9 +95,14 @@ local function detailsContent(screen, media, inner_width)
     end
 
     local title, alternatives = mediaTitle(media)
-    local cover = Cover.thumbnail(screen.controller.api, media, math.floor(inner_width * 0.32), function()
-        Cover.show(screen.controller, media, function() return screen.session.widget == screen end)
-    end, screen)
+    local cover = Cover.thumbnail(media, math.floor(inner_width * 0.32), function()
+        local request = {}
+        screen.preview_request = request
+        Cover.show(screen.controller, media, function()
+            return screen.session.widget == screen and screen.preview_request == request
+        end)
+    end, screen, screen.cover_url, screen.cover_bytes, screen.cached_covers)
+    screen.cover_url, screen.cover_bytes, screen.cached_covers = nil, nil, nil
     if cover then screen.layout[#screen.layout + 1] = { cover } end
     local title_width = inner_width - (cover and cover:getSize().w + pad or 0)
     local title_group = VerticalGroup:new {
@@ -196,7 +203,7 @@ function ScreenWidget:init()
         local strip = TagStrip:new {
             width = inner_width, tags = tags, show_parent = self,
             on_select = function(tag)
-                self:onCloseDetails()
+                UIManager:close(self)
                 controller:openTag(tag, media.type)
             end,
         }
@@ -215,8 +222,7 @@ function ScreenWidget:init()
         for index = 1, #relations do
             local relation = relations[index]
             relation.callback = function()
-                self:onCloseDetails()
-                controller:openDetails(relation.id)
+                controller:openDetails(relation.id, relation.cover_url)
             end
             local row = Row:new { entry = relation, dimen = Geom:new {
                 w = inner_width, h = Screen:scaleBySize(110),
@@ -261,7 +267,7 @@ function ScreenWidget:init()
                 edit_button:setText(editLabel(), edit_button.width)
                 self:refocusWidget()
                 UIManager:setDirty(self, "ui")
-            end)
+            end, function() return self.session.widget == self end)
         end },
     }[2]
 
@@ -358,7 +364,6 @@ function ScreenWidget:onShow()
 end
 
 function ScreenWidget:onCloseDetails()
-    self.session.request = nil
     UIManager:close(self)
     if self.controller.detailsClosed then self.controller:detailsClosed() end
     return true
@@ -369,34 +374,53 @@ function ScreenWidget:onCloseWidget()
         UIManager:unschedule(self.relation_cover_task)
         self.relation_cover_task = nil
     end
-    if self.session.widget == self then self.session.widget = nil end
+    if self.session.widget == self then self.session.widget, self.session.request = nil, nil end
     self.cropping_widget:onCloseWidget()
     self:free(true)
     UIManager:setDirty(nil, "ui")
 end
 
-function Details:show(controller, media_id)
+function Details:show(controller, media_id, cover_hint, is_parent_active)
     local session = self._sessions[controller] or {}
     self._sessions[controller] = session
     local request = {}
     session.request = request
-    Support.online(controller, function()
-        if session.request ~= request then return end
-        session.request = nil
-        local media, err = controller.api:getMediaDetails(media_id)
-        if err or type(media) ~= "table" or not media.id then
+    local function isActive()
+        return session.request == request and (not is_parent_active or is_parent_active())
+    end
+    local function clearRequest()
+        if session.request == request then session.request = nil end
+    end
+    local api = controller.api
+    local download = api.downloadImage
+    local cached_covers = {}
+    local cached_url
+    if cover_hint then
+        cached_covers[cover_hint] = MediaHelpers.getCachedCover(cover_hint)
+        if cached_covers[cover_hint] then cached_url = cover_hint end
+    end
+    Request.run(function()
+        local media, err = api:getMediaDetails(media_id)
+        if err or type(media) ~= "table" or not media.id then return end
+        local url, bytes = Cover.fetchThumbnail(download, media, cached_url)
+        return media, url, bytes
+    end, function(media, url, bytes)
+        if not isActive() then return end
+        clearRequest()
+        if not media then
             Support.error(controller, _("Could not load AniList details."))
             return
         end
-        if session.widget then session.widget:onCloseDetails() end
+        if session.widget then UIManager:close(session.widget) end
         local entry = media.mediaListEntry
         local widget = ScreenWidget:new {
             session = session, controller = controller, media = media,
+            cover_url = url, cover_bytes = bytes, cached_covers = cached_covers,
             entry = type(entry) == "table" and entry.id and entry or nil,
         }
         session.widget = widget
         UIManager:show(widget)
-    end)
+    end, { text = _("Loading AniList details…"), is_active = isActive, on_cancel = clearRequest })
 end
 
 return Details

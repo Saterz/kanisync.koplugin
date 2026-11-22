@@ -1,7 +1,7 @@
 local UIManager = require("ui/uimanager")
 local InputDialog = require("ui/widget/inputdialog")
 local SpinWidget = require("ui/widget/spinwidget")
-local NetworkMgr = require("ui/network/manager")
+local Request = require("ui/ks_foreground_request")
 local ffiUtil = require("ffi/util")
 local _ = require("gettext")
 local T = ffiUtil.template
@@ -89,16 +89,26 @@ end
 function ScoreDialog.show(plugin, anilist_data, user_list_entry)
     local options = plugin.user and plugin.user.mediaListOptions
     local name = options and options.scoreFormat
+    local document = plugin.ui.document
+    local function is_active()
+        return document ~= nil and plugin.ui.document == document
+    end
+
     ScoreDialog.edit(name, plugin.score_formats[name], user_list_entry.score, function(score)
-        NetworkMgr:runWhenOnline(function()
-            local result, error = plugin.api:updateMediaList(user_list_entry.id, anilist_data.id, { score = score })
+        if not is_active() then return end
+        local api = plugin.api
+        local entry_id, media_id = user_list_entry.id, anilist_data.id
+        Request.run(function()
+            return api:updateMediaList(entry_id, media_id, { score = score })
+        end, function(result, error)
+            if not is_active() then return end
             if error or not result then
                 Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
                 return
             end
             plugin:saveBookUserMetadata(result)
             Messages.ephemeralMessage(_("Updated score"))
-        end)
+        end, { text = _("Updating score..."), mutation = true, is_active = is_active })
     end)
 end
 

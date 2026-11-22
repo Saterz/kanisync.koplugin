@@ -2,6 +2,7 @@ local ButtonDialog = require("ui/widget/buttondialog")
 local ConfirmBox = require("ui/widget/confirmbox")
 local NoteDialog = require("ui/dialogs/ks_note_dialog")
 local Progress = require("ui/dialogs/ks_progress")
+local Request = require("ui/ks_foreground_request")
 local ScoreDialog = require("ui/dialogs/ks_score_dialog")
 local StatusMenu = require("ui/menus/ks_status_menu")
 local Support = require("ui/anilist/details/ks_details_support")
@@ -12,8 +13,9 @@ local _ = require("gettext")
 local Editor = {}
 
 
-function Editor.show(controller, media, entry, on_changed)
+function Editor.show(controller, media, entry, on_changed, is_parent_active)
     local api = controller.api
+    local media_id = media.id
     local is_anime = media.type == "ANIME"
     local entry_id = entry and entry.id
 
@@ -27,9 +29,30 @@ function Editor.show(controller, media, entry, on_changed)
     }
     local draft = {}
     for field, value in pairs(original) do draft[field] = value end
-    local dialog, showDialog, score_format_name
+    local dialog, showDialog, score_format_name, request
+
+    local function isActive(active_dialog)
+        return active_dialog ~= nil and dialog == active_dialog and (not is_parent_active or is_parent_active())
+    end
+
+    local function run(task, on_complete, message, mutation)
+        local active_dialog = dialog
+        if not isActive(active_dialog) then return end
+        local current = {}
+        request = current
+        local function isCurrent() return request == current and isActive(active_dialog) end
+        local function clearRequest()
+            if request == current then request = nil end
+        end
+        Request.run(task, function(...)
+            if not isCurrent() then return end
+            clearRequest()
+            on_complete(...)
+        end, { text = message, mutation = mutation, is_active = isCurrent, on_cancel = clearRequest })
+    end
 
     local function update(field, value)
+        if not isActive(dialog) then return end
         draft[field] = value
         UIManager:close(dialog)
         showDialog()
@@ -44,22 +67,30 @@ function Editor.show(controller, media, entry, on_changed)
 
     local function editScore()
         local active_dialog = dialog
-        Support.online(controller, function()
-            if dialog ~= active_dialog then return end
-            if not score_format_name then
-                local user = controller.viewer or api:getUser()
-                local options = user and user.mediaListOptions
-                score_format_name = options and options.scoreFormat
-            end
-            ScoreDialog.edit(score_format_name, controller.plugin.score_formats[score_format_name], draft.score,
-                function(value) update("score", value) end)
-        end)
+        if not isActive(active_dialog) then return end
+        local function showScore(format)
+            score_format_name = format
+            ScoreDialog.edit(format, controller.plugin.score_formats[format], draft.score, function(value)
+                if isActive(active_dialog) then update("score", value) end
+            end)
+        end
+        local viewer = controller.viewer
+        local options = viewer and viewer.mediaListOptions
+        if score_format_name or options and options.scoreFormat then
+            showScore(score_format_name or options.scoreFormat)
+            return
+        end
+        run(function()
+            local user = api:getUser()
+            local list_options = user and user.mediaListOptions
+            return list_options and list_options.scoreFormat
+        end, showScore, _("Loading AniList score settings…"))
     end
 
     local function finish(entry_after_change)
         UIManager:close(dialog)
         on_changed(entry_after_change)
-        controller:libraryChanged(media.id, entry_after_change)
+        controller:libraryChanged(media_id, entry_after_change)
     end
 
     local function save()
@@ -72,16 +103,16 @@ function Editor.show(controller, media, entry, on_changed)
             UIManager:close(dialog)
             return
         end
-        local active_dialog = dialog
-        Support.online(controller, function()
-            if dialog ~= active_dialog then return end
-            local result, err = api:updateMediaList(entry_id, media.id, values)
-            if err or type(result) ~= "table" or not result.id then
+        run(function()
+            local result, err = api:updateMediaList(entry_id, media_id, values)
+            if not err and type(result) == "table" and result.id then return result end
+        end, function(result)
+            if not result then
                 Support.error(controller, _("Could not save this AniList entry."))
                 return
             end
             finish(result)
-        end)
+        end, _("Saving AniList entry…"), true)
     end
 
     local function remove()
@@ -93,16 +124,18 @@ function Editor.show(controller, media, entry, on_changed)
             keep_dialog_open = true,
             ok_callback = function()
                 UIManager:close(confirmation)
-                Support.online(controller, function()
-                    if dialog ~= active_dialog then return end
+                if not isActive(active_dialog) then return end
+                run(function()
                     local result, err = api:deleteMediaList(entry_id)
                     if type(result) == "table" then result = result.deleted end
-                    if err or result ~= true then
+                    return not err and result == true
+                end, function(deleted)
+                    if not deleted then
                         Support.error(controller, _("Could not remove this AniList entry."))
                         return
                     end
                     finish(nil)
-                end)
+                end, _("Removing AniList entry…"), true)
             end,
         }
         UIManager:show(confirmation)
@@ -110,7 +143,7 @@ function Editor.show(controller, media, entry, on_changed)
 
     local DraftDialog = ButtonDialog:extend {}
     function DraftDialog:onCloseWidget()
-        if dialog == self then dialog = nil end
+        if dialog == self then dialog, request = nil, nil end
         ButtonDialog.onCloseWidget(self)
     end
 

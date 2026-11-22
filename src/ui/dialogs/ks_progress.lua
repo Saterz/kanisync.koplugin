@@ -1,7 +1,7 @@
 local UIManager = require("ui/uimanager")
 local SpinWidget = require("ui/widget/spinwidget")
 local DoubleSpinWidget = require("ui/widget/doublespinwidget")
-local NetworkMgr = require("ui/network/manager")
+local Request = require("ui/ks_foreground_request")
 local ffiUtil = require("ffi/util")
 local _ = require("gettext")
 local T = ffiUtil.template
@@ -42,9 +42,34 @@ function Progress.edit(title, unit, value, maximum, on_submit)
     UIManager:show(progressSpinWidget(title, unit, value, maximum, on_submit))
 end
 
+local function progressUpdater(plugin, anilist_data)
+    local document = plugin.ui.document
+    local entry_id, media_id = anilist_data.user_list_entry.id, anilist_data.id
+    local function is_active()
+        return document ~= nil and plugin.ui.document == document
+    end
+
+    return function(values, success_message)
+        if not is_active() then return end
+        local api = plugin.api
+        Request.run(function()
+            return api:updateMediaList(entry_id, media_id, values)
+        end, function(result, error)
+            if not is_active() then return end
+            if error or not result then
+                Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
+                return
+            end
+            plugin:saveBookUserMetadata(result)
+            Messages.ephemeralMessage(success_message)
+        end, { text = _("Updating reading progress..."), mutation = true, is_active = is_active })
+    end
+end
+
 ---@param plugin Kanisync
 function Progress.progressMenu(plugin, anilist_data)
     local user_list_entry = anilist_data.user_list_entry
+    local updateProgress = progressUpdater(plugin, anilist_data)
 
     local chapter_text = anilist_data.chapters and T("Chapter %1 of %2", user_list_entry.progress, anilist_data.chapters) or
         T("Chapter %1", user_list_entry.progress)
@@ -59,16 +84,7 @@ function Progress.progressMenu(plugin, anilist_data)
             callback = function()
                 Progress.edit(_("Chapter progress"), _("chapters"), user_list_entry.progress,
                     anilist_data.chapters, function(value)
-                        NetworkMgr:runWhenOnline(function()
-                            local result, error = plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
-                                { progress = value })
-                            if error or not result then
-                                Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
-                                return
-                            end
-                            plugin:saveBookUserMetadata(result)
-                            Messages.ephemeralMessage(_("Updated chapter progress"))
-                        end)
+                        updateProgress({ progress = value }, _("Updated chapter progress"))
                     end)
             end
         },
@@ -77,16 +93,7 @@ function Progress.progressMenu(plugin, anilist_data)
             callback = function()
                 Progress.edit(_("Volume progress"), _("volumes"), user_list_entry.progress_volumes,
                     anilist_data.volumes, function(value)
-                        NetworkMgr:runWhenOnline(function()
-                            local result, error = plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
-                                { progressVolumes = value })
-                            if error or not result then
-                                Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
-                                return
-                            end
-                            plugin:saveBookUserMetadata(result)
-                            Messages.ephemeralMessage(_("Updated volume progress"))
-                        end)
+                        updateProgress({ progressVolumes = value }, _("Updated volume progress"))
                     end)
             end
         }
@@ -105,17 +112,9 @@ end
 function Progress.progressUpdatePrompt(plugin, anilist_data, progress_scope, close_callback)
     local user_list_entry = anilist_data.user_list_entry
 
-    local function updateProgress(values)
-        NetworkMgr:runWhenOnline(function()
-            local result, error = plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
-                values)
-            if error or not result then
-                Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
-                return
-            end
-            plugin:saveBookUserMetadata(result)
-            Messages.ephemeralMessage(_("Updated reading progress"))
-        end)
+    local updateProgress = progressUpdater(plugin, anilist_data)
+    local function submitProgress(values)
+        updateProgress(values, _("Updated reading progress"))
     end
 
     local widget
@@ -140,19 +139,19 @@ function Progress.progressUpdatePrompt(plugin, anilist_data, progress_scope, clo
             ok_text = _("Set"),
 
             callback = function(chapter_progress, volume_progress)
-                updateProgress({ progress = chapter_progress, progressVolumes = volume_progress })
+                submitProgress({ progress = chapter_progress, progressVolumes = volume_progress })
             end,
             close_callback = close_callback,
         }
     elseif progress_scope == "chapter" then
         widget = progressSpinWidget(_("Update chapter progress"), _("chapters"), user_list_entry.progress,
             anilist_data.chapters, function(value)
-                updateProgress({ progress = value })
+                submitProgress({ progress = value })
             end, _("Update"), close_callback)
     elseif progress_scope == "volume" then
         widget = progressSpinWidget(_("Update volume progress"), _("volumes"), user_list_entry.progress_volumes,
             anilist_data.volumes, function(value)
-                updateProgress({ progressVolumes = value })
+                submitProgress({ progressVolumes = value })
             end, _("Update"), close_callback)
     end
     if widget then

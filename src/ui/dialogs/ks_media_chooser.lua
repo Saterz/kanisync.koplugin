@@ -31,16 +31,16 @@ end
 ---@param select_callback fun(media: table): string|nil
 ---@param search_callback fun(search_query: string)
 ---@param cover_loader fun(url: string): string|nil
----@param on_loading_complete fun()
-function MediaChooser.mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader,
-                                 on_loading_complete)
+---@param is_active fun(): boolean
+function MediaChooser.mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader, is_active)
+    if not is_active() then return end
     if #media_list == 0 then
-        on_loading_complete()
         SearchDialog.searchDialog(search_query, search_callback, true)
         return
     end
 
     UIManager:nextTick(function()
+        if not is_active() then return end
         local thumbnail_width = Screen:scaleBySize(48)
         local thumbnail_height = Screen:scaleBySize(68)
 
@@ -52,7 +52,9 @@ function MediaChooser.mediaChooser(media_list, search_query, select_callback, se
                 indent = -thumbnail_state_width,
                 callback = function()
                     UIManager:nextTick(function()
-                        SearchDialog.searchDialog(search_query, search_callback)
+                        if is_active() then
+                            SearchDialog.searchDialog(search_query, search_callback)
+                        end
                     end)
                 end,
             },
@@ -79,9 +81,9 @@ function MediaChooser.mediaChooser(media_list, search_query, select_callback, se
                 callback = function()
                     UIManager:nextTick(function()
                         MediaPreview.previewMedia(media, function()
-                            MediaChooser.mediaChooser(media_list, search_query, select_callback, search_callback, cover_loader,
-                                on_loading_complete)
-                        end, select_callback, cover_loader)
+                            MediaChooser.mediaChooser(media_list, search_query, select_callback, search_callback,
+                                cover_loader, is_active)
+                        end, select_callback, cover_loader, is_active)
                     end)
                 end,
             })
@@ -170,7 +172,6 @@ function MediaChooser.mediaChooser(media_list, search_query, select_callback, se
                 Menu.onCloseWidget(menu)
             end,
         }
-        on_loading_complete()
         UIManager:show(chooser)
         scheduleCovers()
     end)
