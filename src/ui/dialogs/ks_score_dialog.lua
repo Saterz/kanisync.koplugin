@@ -10,36 +10,33 @@ local Messages = require("ui/ks_messages")
 
 local ScoreDialog = {}
 
----@param plugin Kanisync
-function ScoreDialog.show(plugin, anilist_data, user_list_entry, hasScore)
-    local score_format_name = plugin.user.mediaListOptions.scoreFormat
-    local score_format = plugin.score_formats[score_format_name]
+---Edit a score in the viewer's AniList format without deciding how it is saved.
+function ScoreDialog.edit(score_format_name, score_format, score, on_submit)
     if not score_format then
         Messages.ephemeralMessage(_("Unable to determine your AniList score format."))
         return
     end
+    local hasScore = score ~= nil and score ~= 0
 
-    local function saveScore(score)
-        NetworkMgr:runWhenOnline(function()
-            local result, error = plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
-                { score = score })
-            if error or not result then
-                Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
-                return
-            end
-            plugin:saveBookUserMetadata(result)
-            Messages.ephemeralMessage(_("Updated score"))
-        end)
+    local function isValid(value)
+        if value and value >= score_format.minimum and value <= score_format.maximum then
+            local units = value / score_format.step
+            if math.abs(units - math.floor(units + 0.5)) < 0.000001 then return true end
+        end
+        Messages.ephemeralMessage(T(_("Enter a score from %1 to %2 in increments of %3."),
+            score_format.minimum, score_format.maximum, score_format.step))
+        return false
     end
 
     local uses_spin_widget = score_format_name == "POINT_3"
         or score_format_name == "POINT_5"
         or score_format_name == "POINT_10"
     if uses_spin_widget then
+        local submitted
         UIManager:show(SpinWidget:new {
             title_text = hasScore and _("Edit score") or _("Add score"),
             info_text = T(_("%1 (%2-%3)"), score_format.label, score_format.minimum, score_format.maximum),
-            value = user_list_entry.score or score_format.minimum,
+            value = score or score_format.minimum,
             value_min = score_format.minimum,
             value_max = score_format.maximum,
             value_step = score_format.step,
@@ -47,7 +44,10 @@ function ScoreDialog.show(plugin, anilist_data, user_list_entry, hasScore)
             precision = "%d",
             ok_text = _("Save"),
             callback = function(spin)
-                saveScore(spin.value)
+                submitted = spin.value
+            end,
+            close_callback = function()
+                if submitted ~= nil and isValid(submitted) then on_submit(submitted) end
             end,
         })
         return
@@ -57,7 +57,7 @@ function ScoreDialog.show(plugin, anilist_data, user_list_entry, hasScore)
     dialog = InputDialog:new {
         title = hasScore and _("Edit score") or _("Add score"),
         description = T(_("Enter a %1 score from %2 to %3."), score_format.label, score_format.minimum, score_format.maximum),
-        input = hasScore and tostring(user_list_entry.score) or "",
+        input = hasScore and tostring(score) or "",
         input_type = "number",
         buttons = {
             {
@@ -72,16 +72,10 @@ function ScoreDialog.show(plugin, anilist_data, user_list_entry, hasScore)
                     text = _("Save"),
                     is_enter_default = true,
                     callback = function()
-                        local score = tonumber(dialog:getInputText())
-                        local valid_step = score and math.abs(score / score_format.step
-                            - math.floor(score / score_format.step + 0.5)) < 0.000001
-                        if not valid_step or score < score_format.minimum or score > score_format.maximum then
-                            Messages.ephemeralMessage(T(_("Enter a score from %1 to %2 in increments of %3."),
-                                score_format.minimum, score_format.maximum, score_format.step))
-                            return
-                        end
+                        local value = tonumber(dialog:getInputText())
+                        if not isValid(value) then return end
                         UIManager:close(dialog)
-                        saveScore(score)
+                        on_submit(value)
                     end,
                 },
             },
@@ -89,6 +83,23 @@ function ScoreDialog.show(plugin, anilist_data, user_list_entry, hasScore)
     }
     UIManager:show(dialog)
     dialog:onShowKeyboard()
+end
+
+---@param plugin Kanisync
+function ScoreDialog.show(plugin, anilist_data, user_list_entry)
+    local options = plugin.user and plugin.user.mediaListOptions
+    local name = options and options.scoreFormat
+    ScoreDialog.edit(name, plugin.score_formats[name], user_list_entry.score, function(score)
+        NetworkMgr:runWhenOnline(function()
+            local result, error = plugin.api:updateMediaList(user_list_entry.id, anilist_data.id, { score = score })
+            if error or not result then
+                Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
+                return
+            end
+            plugin:saveBookUserMetadata(result)
+            Messages.ephemeralMessage(_("Updated score"))
+        end)
+    end)
 end
 
 return ScoreDialog

@@ -22,7 +22,7 @@ function EntryMenu.manageEntry(plugin, anilist_data)
     local user_list_entry = anilist_data.user_list_entry
 
     local hasNotes = user_list_entry.notes ~= nil and user_list_entry.notes ~= ""
-    local hasScore = user_list_entry.score ~= nil
+
     return {
         {
             text = _("Pull changes"),
@@ -53,7 +53,7 @@ function EntryMenu.manageEntry(plugin, anilist_data)
         {
             text = hasNotes and _("Edit note") or _("Add note"),
             callback = function()
-                NoteDialog.show(plugin, anilist_data, user_list_entry, hasNotes)
+                NoteDialog.show(plugin, anilist_data, user_list_entry)
             end
         },
         {
@@ -67,7 +67,7 @@ function EntryMenu.manageEntry(plugin, anilist_data)
                 )
                 or _("Score: Not rated"),
             callback = function()
-                ScoreDialog.show(plugin, anilist_data, user_list_entry, hasScore)
+                ScoreDialog.show(plugin, anilist_data, user_list_entry)
             end
         },
         {

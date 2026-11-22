@@ -8,6 +8,7 @@ local Messages = require("ui/ks_messages")
 local SettingsMenu = require("ui/menus/ks_settings_menu")
 local TokenDialog = require("ui/dialogs/ks_token_dialog")
 local EntryMenu = require("ui/menus/ks_entry_menu")
+local AniListBrowser = require("ui/anilist/browser/ks_browser")
 
 local MainMenu = {}
 
@@ -63,6 +64,13 @@ function MainMenu.main_menu(plugin, anilist_data)
         end
     end
 
+    table.insert(menu, {
+        text = _("Open AniList"),
+        keep_menu_open = false,
+        callback = function()
+            AniListBrowser.open(plugin)
+        end,
+    })
     table.insert(menu, {
         text = _("Settings"),
         sub_item_table = SettingsMenu.settingsMenu(plugin)

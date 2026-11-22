@@ -14,6 +14,7 @@ rsync -av \
     --exclude="kani_config.lua" \
     --include="*/" \
     --include="*.lua" \
+    --include="*.svg" \
     --exclude="*" \
     ./src/ "./dist/$PLUGIN_NAME"
 cp README.md LICENSE "dist/$PLUGIN_NAME/"

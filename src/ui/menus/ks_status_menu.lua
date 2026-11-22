@@ -5,15 +5,19 @@ local Messages = require("ui/ks_messages")
 
 local StatusMenu = {}
 
-local statuses = {
-    { text = _("Reading"),   value = "CURRENT" },
-    { text = _("Planning"),  value = "PLANNING" },
-    { text = _("Completed"), value = "COMPLETED" },
-    { text = _("On hold"),   value = "PAUSED" },
-    { text = _("Dropped"),   value = "DROPPED" },
-}
+function StatusMenu.choices(is_anime)
+    return {
+        { text = is_anime and _("Watching") or _("Reading"), value = "CURRENT" },
+        { text = is_anime and _("Plan to watch") or _("Planning"), value = "PLANNING" },
+        { text = _("Completed"), value = "COMPLETED" },
+        { text = _("On hold"), value = "PAUSED" },
+        { text = _("Dropped"), value = "DROPPED" },
+        { text = is_anime and _("Rewatching") or _("Rereading"), value = "REPEATING" },
+    }
+end
 
-local function getStatusLabel(value)
+local function getStatusLabel(value, is_anime)
+    local statuses = StatusMenu.choices(is_anime)
     for status_index = 1, #statuses do
         local status = statuses[status_index]
         if status.value == value then
@@ -30,10 +34,11 @@ function StatusMenu.updateStatusMenu(plugin, anilist_data)
     local status_items = {}
     ---@type ReadingStatus
     local selected_status = anilist_data.user_list_entry.status
+    local statuses = StatusMenu.choices(false)
     for status_index = 1, #statuses do
         local status = statuses[status_index]
         table.insert(status_items, {
-            text = _(status.text),
+            text = status.text,
             radio = true,
             checked_func = function()
                 return selected_status == status.value

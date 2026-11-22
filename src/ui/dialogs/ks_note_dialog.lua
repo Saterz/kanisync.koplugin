@@ -6,14 +6,15 @@ local _ = require("gettext")
 
 local NoteDialog = {}
 
----@param plugin Kanisync
-function NoteDialog.show(plugin, anilist_data, user_list_entry, hasNotes)
-    local search_query = user_list_entry.notes
+---Edit a note without deciding how it is saved.
+function NoteDialog.edit(note, on_submit)
+    local hasNotes = note ~= nil and note ~= ""
     local dialog
     dialog = InputDialog:new {
         title = hasNotes and _("Edit note") or _("Add note"),
         description = hasNotes and _("Edit your personal note for this AniList entry.") or _("Add a personal note to this AniList entry."),
-        input = search_query,
+        input = note or "",
+        allow_newline = true,
         buttons = {
             {
                 {
@@ -25,20 +26,10 @@ function NoteDialog.show(plugin, anilist_data, user_list_entry, hasNotes)
                 },
                 {
                     text = _("Submit"),
-                    is_enter_default = true,
                     callback = function()
-                        local query = dialog:getInputText()
+                        local text = dialog:getInputText()
                         UIManager:close(dialog)
-                        NetworkMgr:runWhenOnline(function()
-                            local result, error = plugin.api:updateMediaList(user_list_entry.id,
-                                anilist_data.id, { notes = query })
-                            if error or not result then
-                                Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
-                                return
-                            end
-                            plugin:saveBookUserMetadata(result)
-                            Messages.ephemeralMessage(_("Updated personal note"))
-                        end)
+                        on_submit(text)
                     end,
                 },
             },
@@ -46,6 +37,21 @@ function NoteDialog.show(plugin, anilist_data, user_list_entry, hasNotes)
     }
     UIManager:show(dialog)
     dialog:onShowKeyboard()
+end
+
+---@param plugin Kanisync
+function NoteDialog.show(plugin, anilist_data, user_list_entry)
+    NoteDialog.edit(user_list_entry.notes, function(note)
+        NetworkMgr:runWhenOnline(function()
+            local result, error = plugin.api:updateMediaList(user_list_entry.id, anilist_data.id, { notes = note })
+            if error or not result then
+                Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
+                return
+            end
+            plugin:saveBookUserMetadata(result)
+            Messages.ephemeralMessage(_("Updated personal note"))
+        end)
+    end)
 end
 
 return NoteDialog

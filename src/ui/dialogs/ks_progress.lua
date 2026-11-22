@@ -9,6 +9,38 @@ local T = ffiUtil.template
 local Messages = require("ui/ks_messages")
 
 local Progress = {}
+local MAX_PROGRESS = 2147483647 -- AniList uses a GraphQL Int for progress.
+
+local function progressSpinWidget(title, unit, value, maximum, on_submit, ok_text, on_close)
+    local submitted
+    return SpinWidget:new {
+        title_text = title,
+        value = value,
+        value_min = 0,
+        value_max = maximum or MAX_PROGRESS,
+        value_step = 1,
+        value_hold_step = 10,
+        precision = "%d",
+        unit = unit,
+        ok_text = ok_text or _("Set"),
+        callback = function(spin) submitted = spin.value end,
+        close_callback = function()
+            if submitted ~= nil then
+                -- KOReader's numeric input allows a bounds override; AniList still requires a non-negative Int.
+                if submitted >= 0 and submitted <= MAX_PROGRESS and submitted % 1 == 0 then
+                    on_submit(submitted)
+                else
+                    Messages.ephemeralMessage(_("Enter a valid non-negative whole number."))
+                end
+            end
+            if on_close then on_close() end
+        end,
+    }
+end
+
+function Progress.edit(title, unit, value, maximum, on_submit)
+    UIManager:show(progressSpinWidget(title, unit, value, maximum, on_submit))
+end
 
 ---@param plugin Kanisync
 function Progress.progressMenu(plugin, anilist_data)
@@ -20,29 +52,16 @@ function Progress.progressMenu(plugin, anilist_data)
         T("Volume %1 of %2", user_list_entry.progress_volumes, anilist_data.volumes) or
         T("Volume %1", user_list_entry.progress_volumes)
 
-    local function updateProgressSpinWidget(title_text, unit, value, value_max, callback)
-        return SpinWidget:new {
-            title_text = _(title_text),
-            value = value,
-            value_min = 0,
-            value_max = value_max or math.huge,
-            value_step = 1,
-            value_hold_step = 10,
-            unit = _(unit),
-            ok_text = _("Set"),
-            callback = callback
-        }
-    end
 
     local menu = {
         {
             text = _(chapter_text),
             callback = function()
-                local dialog = updateProgressSpinWidget("Chapter progress", "chapters", user_list_entry.progress,
-                    anilist_data.chapters, function(spin)
+                Progress.edit(_("Chapter progress"), _("chapters"), user_list_entry.progress,
+                    anilist_data.chapters, function(value)
                         NetworkMgr:runWhenOnline(function()
                             local result, error = plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
-                                { progress = spin.value })
+                                { progress = value })
                             if error or not result then
                                 Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
                                 return
@@ -51,17 +70,16 @@ function Progress.progressMenu(plugin, anilist_data)
                             Messages.ephemeralMessage(_("Updated chapter progress"))
                         end)
                     end)
-                UIManager:show(dialog)
             end
         },
         {
             text = _(volume_text),
             callback = function()
-                local dialog = updateProgressSpinWidget("Volume progress", "volumes", user_list_entry.progress_volumes,
-                    anilist_data.volumes, function(spin)
+                Progress.edit(_("Volume progress"), _("volumes"), user_list_entry.progress_volumes,
+                    anilist_data.volumes, function(value)
                         NetworkMgr:runWhenOnline(function()
                             local result, error = plugin.api:updateMediaList(user_list_entry.id, anilist_data.id,
-                                { progressVolumes = spin.value })
+                                { progressVolumes = value })
                             if error or not result then
                                 Messages.ephemeralMessage(error or _("AniList returned an invalid response"))
                                 return
@@ -70,7 +88,6 @@ function Progress.progressMenu(plugin, anilist_data)
                             Messages.ephemeralMessage(_("Updated volume progress"))
                         end)
                     end)
-                UIManager:show(dialog)
             end
         }
     }
@@ -128,43 +145,15 @@ function Progress.progressUpdatePrompt(plugin, anilist_data, progress_scope, clo
             close_callback = close_callback,
         }
     elseif progress_scope == "chapter" then
-        widget = SpinWidget:new {
-            title_text = _("Update chapter progress"),
-
-            value = user_list_entry.progress,
-            value_min = 0,
-            value_max = anilist_data.chapters or math.huge,
-            value_step = 1,
-            value_hold_step = 10,
-            precision = "%d",
-            unit = _("chapters"),
-
-            ok_text = _("Update"),
-
-            callback = function(spin)
-                updateProgress({ progress = spin.value })
-            end,
-            close_callback = close_callback,
-        }
+        widget = progressSpinWidget(_("Update chapter progress"), _("chapters"), user_list_entry.progress,
+            anilist_data.chapters, function(value)
+                updateProgress({ progress = value })
+            end, _("Update"), close_callback)
     elseif progress_scope == "volume" then
-        widget = SpinWidget:new {
-            title_text = _("Update volume progress"),
-
-            value = user_list_entry.progress_volumes,
-            value_min = 0,
-            value_max = anilist_data.volumes or math.huge,
-            value_step = 1,
-            value_hold_step = 10,
-            precision = "%d",
-            unit = _("volumes"),
-
-            ok_text = _("Update"),
-
-            callback = function(spin)
-                updateProgress({ progressVolumes = spin.value }, _("Updated volume progress"))
-            end,
-            close_callback = close_callback,
-        }
+        widget = progressSpinWidget(_("Update volume progress"), _("volumes"), user_list_entry.progress_volumes,
+            anilist_data.volumes, function(value)
+                updateProgress({ progressVolumes = value })
+            end, _("Update"), close_callback)
     end
     if widget then
         UIManager:show(widget)
