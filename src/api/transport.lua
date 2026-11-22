@@ -62,7 +62,7 @@ local function graphQLError(errors, token)
 end
 
 --- Sends a GraphQL request and returns its decoded envelope, or nil, error.
-function Transport.request(self, query, variables)
+function Transport:request(query, variables)
     local ok, body = pcall(JSON.encode, { query = query, variables = variables })
     if not ok or type(body) ~= "string" then
         return nil, "Unable to encode AniList request"

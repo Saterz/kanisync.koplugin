@@ -105,7 +105,7 @@ mutation RemoveListEntry($id: Int!) {
 }
 ]]
 
-function Library.getUser(self)
+function Library:getUser()
     local result, err = self:request(GET_USER)
     if not result then
         return nil, err
@@ -164,7 +164,7 @@ end
 ---@param media_id? integer
 ---@param values MediaListUpdateValues
 ---@return table|nil, string?
-function Library.updateMediaList(self, list_entry_id, media_id, values)
+function Library:updateMediaList(list_entry_id, media_id, values)
     if list_entry_id == nil and media_id == nil then
         return nil, "A list entry ID or media ID is required"
     end
@@ -198,7 +198,7 @@ end
 --- Deletes an entry by mediaListEntry.id (not the media ID).
 ---@param list_entry_id integer
 ---@return true|nil, string?
-function Library.deleteMediaList(self, list_entry_id)
+function Library:deleteMediaList(list_entry_id)
     if not Common.isPositiveInt(list_entry_id) then
         return nil, "A positive list entry ID is required"
     end

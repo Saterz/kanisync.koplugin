@@ -105,7 +105,7 @@ end
 ---@param options? CatalogOptions
 ---@param page? integer One-based AniList page (default 1)
 ---@return AniListMediaPage|nil, string?
-function Catalog.browse(self, options, page)
+function Catalog:browse(options, page)
     options = options or {}
     page = page or 1
     if not Common.isPositiveInt(page) then
@@ -160,7 +160,7 @@ local function getSingleMedia(api, query, media_id)
 end
 
 --- Fetches one anime or manga by ID; mediaListEntry belongs to the authenticated viewer.
-function Catalog.getMediaDetails(self, media_id)
+function Catalog:getMediaDetails(media_id)
     local media, err = getSingleMedia(self, GET_DETAILS, media_id)
     if not media then
         return nil, err
@@ -191,11 +191,11 @@ function Catalog.getMediaDetails(self, media_id)
     return media
 end
 
-function Catalog.getMedia(self, media_id)
+function Catalog:getMedia(media_id)
     return getSingleMedia(self, GET_MANGA, media_id)
 end
 
-function Catalog.searchMedia(self, search_query)
+function Catalog:searchMedia(search_query)
     local result, err = self:request(SEARCH_MANGA, {
         search = search_query,
         isAdult = adultArgument(self),
